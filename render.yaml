@@ -1,25 +1,31 @@
-# render.yaml — Render Blueprint
-# Deploys all three services (DB + Backend + Frontend) in one click
+# render.yaml — Render Blueprint (corrected)
+# Deploys PostgreSQL + Spring Boot backend + React frontend in one click
 
 services:
-  # ── 1. Spring Boot Backend ─────────────────────────────────
+  # ── 1. Spring Boot Backend (Docker) ────────────────────────
   - type: web
     name: datapulse-backend
-    runtime: java
+    env: docker
     plan: free
-    rootDir: backend
-    buildCommand: mvn clean package -DskipTests
-    startCommand: java -jar target/dashboard-backend-0.0.1-SNAPSHOT.jar
+    dockerfilePath: ./backend/Dockerfile
     envVars:
-      - key: DATABASE_URL
+      - key: DB_HOST
         fromDatabase:
           name: datapulse-db
-          property: jdbcInternalConnectionString
-      - key: DATABASE_USERNAME
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: datapulse-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: datapulse-db
+          property: database
+      - key: DB_USER
         fromDatabase:
           name: datapulse-db
           property: user
-      - key: DATABASE_PASSWORD
+      - key: DB_PASSWORD
         fromDatabase:
           name: datapulse-db
           property: password
@@ -28,10 +34,10 @@ services:
       - key: PORT
         value: "8081"
 
-  # ── 2. React / Vite Frontend ────────────────────────────────
+  # ── 2. React / Vite Frontend (Static Site) ─────────────────
   - type: web
     name: datapulse-frontend
-    runtime: static
+    env: static
     plan: free
     rootDir: frontend
     buildCommand: npm install && npm run build
@@ -53,4 +59,4 @@ databases:
   - name: datapulse-db
     plan: free
     databaseName: dashboard_db
-    user: postgres
+    user: datapulse_user
