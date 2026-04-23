@@ -1,4 +1,4 @@
-import { useTheme } from '../theme.jsx';
+import { useTheme } from '../theme-context.js';
 
 const NAV_MAIN = [
   {

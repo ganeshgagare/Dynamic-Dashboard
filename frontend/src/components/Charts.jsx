@@ -96,7 +96,7 @@ export function StatusPieChart({ data }) {
 
   const total = chartData.reduce((s, d) => s + d.value, 0);
 
-  const renderLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, name, value }) => {
+  const renderLabel = ({ cx, cy, midAngle, outerRadius, name, value }) => {
     const RADIAN = Math.PI / 180;
     // Add a fixed 12px offset outside the pie to avoid dynamic scaling issues
     const radius = outerRadius + 14; 

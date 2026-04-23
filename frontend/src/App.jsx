@@ -23,7 +23,7 @@ const PAGE_TITLES = {
   help:       { title: 'Help',       sub: 'Support and documentation' },
 };
 
-function DashboardHome({ data, onRefresh, loading, dashPrefs }) {
+function DashboardHome({ data, dashPrefs }) {
   const [filters, setFilters] = useState({ status: 'All', category: 'All', search: '' });
 
   const filtered = useMemo(() => data.filter(d => {
@@ -289,7 +289,7 @@ function NewDatasourceModal({ onClose, onTest }) {
       } else {
         alert('❌ Connection failed: ' + data.message);
       }
-    } catch (err) {
+    } catch {
       alert('❌ Error connecting to server');
     } finally {
       setTesting(false);
@@ -349,7 +349,7 @@ function ImportDashboardModal({ onClose, onImport }) {
         const json = JSON.parse(e.target.result);
         onImport(json);
         onClose();
-      } catch (err) {
+      } catch {
         alert("Invalid JSON file.");
       }
     };
@@ -430,12 +430,18 @@ function AppInner() {
       const data = await fetchDashboardData();
       setRawData(data);
       setLastUpdated(new Date());
-    } catch (err) {
+    } catch {
       setApiError('Failed to load dashboard data. Please refresh or check the backend.');
     } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { if (user) loadData(); }, [user, loadData]);
+  useEffect(() => {
+    if (!user) return;
+    const timeoutId = setTimeout(() => {
+      loadData();
+    }, 0);
+    return () => clearTimeout(timeoutId);
+  }, [user, loadData]);
 
   const handleLogin = (u) => {
     // u contains { token, id, name, email, role, preferences }
