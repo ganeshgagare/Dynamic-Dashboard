@@ -437,10 +437,10 @@ function AppInner() {
 
   useEffect(() => {
     if (!user) return;
-    const timeoutId = setTimeout(() => {
-      loadData();
-    }, 0);
-    return () => clearTimeout(timeoutId);
+    const run = async () => {
+      await loadData();
+    };
+    run();
   }, [user, loadData]);
 
   const handleLogin = (u) => {
