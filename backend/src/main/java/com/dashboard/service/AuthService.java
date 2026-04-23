@@ -44,6 +44,38 @@ public class AuthService {
         }
         return user;
     }
+
+    /** Generate a 6-digit OTP and set it to expire in 5 minutes. */
+    public String generateOtp(User user) {
+        String otp = String.format("%06d", new java.util.Random().nextInt(999999));
+        user.setOtpCode(otp);
+        user.setOtpExpiry(java.time.LocalDateTime.now().plusMinutes(5));
+        userRepo.save(user);
+        
+        // In a real app, you would send this via email/SMS here.
+        System.out.println(">>> DEBUG OTP for " + user.getEmail() + " is: " + otp);
+        
+        return otp;
+    }
+
+    /** Verify OTP. Returns User if valid, throws otherwise. */
+    public User verifyOtp(String email, String otp) {
+        User user = userRepo.findByEmail(email)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        
+        if (user.getOtpCode() == null || !user.getOtpCode().equals(otp)) {
+            throw new IllegalArgumentException("Invalid OTP.");
+        }
+        
+        if (user.getOtpExpiry().isBefore(java.time.LocalDateTime.now())) {
+            throw new IllegalArgumentException("OTP has expired.");
+        }
+        
+        // Clear OTP after successful verification
+        user.setOtpCode(null);
+        user.setOtpExpiry(null);
+        return userRepo.save(user);
+    }
     public User updateProfile(Long id, String name, String email) {
         User user = userRepo.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("User not found"));

@@ -30,14 +30,24 @@ public class AuthController {
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest body) {
         User user = authService.register(
                 body.getName(), body.getEmail(), body.getPassword(), "Viewer");
-        String token = jwtUtil.generateToken(user);
-        return ResponseEntity.ok(buildAuthResponse(user, token));
+        authService.generateOtp(user);
+        return ResponseEntity.ok(Map.of("otpRequired", true, "email", user.getEmail()));
     }
 
     /** Public: authenticate and receive a JWT. */
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest body) {
         User user = authService.login(body.getEmail(), body.getPassword());
+        authService.generateOtp(user);
+        return ResponseEntity.ok(Map.of("otpRequired", true, "email", user.getEmail()));
+    }
+
+    /** Public: verify OTP and issue JWT. */
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOtp(@RequestBody Map<String, String> body) {
+        String email = required(body, "email");
+        String otp   = required(body, "otp");
+        User user = authService.verifyOtp(email, otp);
         String token = jwtUtil.generateToken(user);
         return ResponseEntity.ok(buildAuthResponse(user, token));
     }

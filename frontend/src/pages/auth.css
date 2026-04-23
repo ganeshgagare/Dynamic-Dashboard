@@ -130,3 +130,14 @@
 }
 .auth-link:hover { color: #a78bfa; }
 
+/* ── OTP Step ── */
+.auth-step-info { text-align: center; margin-bottom: 24px; }
+.auth-step-info h3 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+.auth-step-info p { font-size: 13px; color: #9ca3af; line-height: 1.5; }
+[data-theme="light"] .auth-step-info h3 { color: #1e1b4b; }
+
+.otp-input {
+  text-align: center; font-size: 28px !important; letter-spacing: 0.3em;
+  font-weight: 700; height: 60px;
+}
+

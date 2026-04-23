@@ -10,7 +10,8 @@ export function LoginPage({ onLogin }) {
   const [form, setForm]     = useState({ name: '', email: '', password: '' });
   const [error, setError]   = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPwd, setShowPwd] = useState(false);
+  const [otpStep, setOtpStep] = useState(false);
+  const [otpValue, setOtpValue] = useState('');
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -36,28 +37,57 @@ export function LoginPage({ onLogin }) {
         : { name: form.name.trim(), email: form.email.trim(), password: form.password };
 
       const { data } = await axios.post(endpoint, payload);
-      // data = { token, id, name, email, role, preferences }
-      if (data.token) {
-        localStorage.setItem('dp_token', data.token);
-      }
-      onLogin(data);
-
-    } catch (err) {
-      if (err.code === 'ERR_NETWORK' || err.code === 'ECONNREFUSED') {
-        setError('⚠ Backend server is offline. Start Spring Boot to enable real authentication.');
-      } else if (err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else if (err.response?.data?.error) {
-        setError(err.response.data.error);
+      
+      if (data.otpRequired) {
+        setOtpStep(true);
       } else {
-        setError('Something went wrong. Please try again.');
+        // Fallback for cases where OTP might be disabled (not implemented here)
+        if (data.token) localStorage.setItem('dp_token', data.token);
+        onLogin(data);
       }
+    } catch (err) {
+      handleError(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const switchTab = (t) => { setTab(t); setError(''); };
+  const handleOtpSubmit = async (e) => {
+    e.preventDefault();
+    if (otpValue.length < 6) { setError('Please enter the 6-digit OTP.'); return; }
+    
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await axios.post(`${API}/verify-otp`, {
+        email: form.email.trim(),
+        otp: otpValue
+      });
+      
+      if (data.token) {
+        localStorage.setItem('dp_token', data.token);
+      }
+      onLogin(data);
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleError = (err) => {
+    if (err.code === 'ERR_NETWORK' || err.code === 'ECONNREFUSED') {
+      setError('⚠ Backend server is offline.');
+    } else if (err.response?.data?.message) {
+      setError(err.response.data.message);
+    } else if (err.response?.data?.error) {
+      setError(err.response.data.error);
+    } else {
+      setError('Something went wrong. Please try again.');
+    }
+  };
+
+  const switchTab = (t) => { setTab(t); setOtpStep(false); setError(''); };
 
   return (
     <div className="auth-bg">
@@ -81,55 +111,89 @@ export function LoginPage({ onLogin }) {
         </div>
 
         {/* Tabs */}
-        <div className="auth-tabs">
-          <button className={`auth-tab ${tab==='login'?'active':''}`} onClick={() => switchTab('login')}>Sign In</button>
-          <button className={`auth-tab ${tab==='register'?'active':''}`} onClick={() => switchTab('register')}>Register</button>
-        </div>
+        {!otpStep && (
+          <div className="auth-tabs">
+            <button className={`auth-tab ${tab==='login'?'active':''}`} onClick={() => switchTab('login')}>Sign In</button>
+            <button className={`auth-tab ${tab==='register'?'active':''}`} onClick={() => switchTab('register')}>Register</button>
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          {tab === 'register' && (
+        {otpStep ? (
+          <form onSubmit={handleOtpSubmit} className="auth-form">
+            <div className="auth-step-info">
+              <h3>Verify Identity</h3>
+              <p>We've sent a 6-digit OTP to <strong>{form.email}</strong>. Check your server logs for the code.</p>
+            </div>
+
             <div className="auth-field">
-              <label>Full Name</label>
-              <input placeholder="John Doe" value={form.name} onChange={e => set('name', e.target.value)} autoFocus/>
+              <label>One-Time Password</label>
+              <input 
+                type="text" 
+                placeholder="000000" 
+                maxLength="6" 
+                value={otpValue} 
+                onChange={e => setOtpValue(e.target.value.replace(/\D/g,''))} 
+                className="otp-input"
+                autoFocus
+              />
             </div>
-          )}
 
-          <div className="auth-field">
-            <label>Email Address</label>
-            <input type="email" placeholder="you@example.com" value={form.email}
-              onChange={e => set('email', e.target.value)} autoFocus={tab==='login'}/>
-          </div>
+            {error && <div className="auth-error">{error}</div>}
 
-          <div className="auth-field">
-            <label>Password</label>
-            <div className="pwd-wrap">
-              <input type={showPwd ? 'text' : 'password'} placeholder="Min. 6 characters"
-                value={form.password} onChange={e => set('password', e.target.value)} />
-              <button type="button" className="pwd-toggle" onClick={() => setShowPwd(s => !s)}>
-                {showPwd ? '🙈' : '👁'}
-              </button>
+            <button type="submit" className="auth-submit" disabled={loading}>
+              {loading ? <span className="auth-spinner"/> : '→ Verify & Enter'}
+            </button>
+
+            <button type="button" className="auth-link" onClick={() => setOtpStep(false)} style={{ marginTop: '1rem' }}>
+              ← Back to {tab === 'login' ? 'Login' : 'Register'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="auth-form">
+            {tab === 'register' && (
+              <div className="auth-field">
+                <label>Full Name</label>
+                <input placeholder="John Doe" value={form.name} onChange={e => set('name', e.target.value)} autoFocus/>
+              </div>
+            )}
+
+            <div className="auth-field">
+              <label>Email Address</label>
+              <input type="email" placeholder="you@example.com" value={form.email}
+                onChange={e => set('email', e.target.value)} autoFocus={tab==='login'}/>
             </div>
-          </div>
 
-          {tab === 'register' && (
-            <p className="auth-backend-note" style={{ marginTop: 0 }}>
-              🔒 New accounts are created with the <strong>Viewer</strong> role. An Admin can promote your role after registration.
+            <div className="auth-field">
+              <label>Password</label>
+              <div className="pwd-wrap">
+                <input type={showPwd ? 'text' : 'password'} placeholder="Min. 6 characters"
+                  value={form.password} onChange={e => set('password', e.target.value)} />
+                <button type="button" className="pwd-toggle" onClick={() => setShowPwd(s => !s)}>
+                  {showPwd ? '🙈' : '👁'}
+                </button>
+              </div>
+            </div>
+
+            {tab === 'register' && (
+              <p className="auth-backend-note" style={{ marginTop: 0 }}>
+                🔒 New accounts are created with the <strong>Viewer</strong> role. An Admin can promote your role after registration.
+              </p>
+            )}
+
+            {error && <div className="auth-error">{error}</div>}
+
+            <button type="submit" className="auth-submit" disabled={loading}>
+              {loading
+                ? <span className="auth-spinner"/>
+                : (tab==='login' ? '→ Sign In' : '→ Create Account')}
+            </button>
+
+            <p className="auth-backend-note">
+              🔒 Credentials are stored securely in PostgreSQL with BCrypt hashing.
+              {tab === 'login' && <> Don't have an account? <button type="button" className="auth-link" onClick={() => switchTab('register')}>Register</button></>}
             </p>
-          )}
-
-          {error && <div className="auth-error">{error}</div>}
-
-          <button type="submit" className="auth-submit" disabled={loading}>
-            {loading
-              ? <span className="auth-spinner"/>
-              : (tab==='login' ? '→ Sign In' : '→ Create Account')}
-          </button>
-
-          <p className="auth-backend-note">
-            🔒 Credentials are stored securely in PostgreSQL with BCrypt hashing.
-            {tab === 'login' && <> Don't have an account? <button type="button" className="auth-link" onClick={() => switchTab('register')}>Register</button></>}
-          </p>
-        </form>
+          </form>
+        )}
       </div>
     </div>
   );

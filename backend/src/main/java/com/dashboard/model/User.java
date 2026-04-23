@@ -25,6 +25,9 @@ public class User {
     @Column(columnDefinition = "TEXT")
     private String preferences; // JSON string
 
+    private String otpCode;
+    private java.time.LocalDateTime otpExpiry;
+
     public User() {}
 
     public User(String name, String email, String password, String role) {
@@ -45,4 +48,8 @@ public class User {
     public void setRole(String r)   { this.role = r; }
     public String getPreferences()  { return preferences; }
     public void setPreferences(String pref) { this.preferences = pref; }
+    public String getOtpCode()      { return otpCode; }
+    public void setOtpCode(String o){ this.otpCode = o; }
+    public java.time.LocalDateTime getOtpExpiry() { return otpExpiry; }
+    public void setOtpExpiry(java.time.LocalDateTime e) { this.otpExpiry = e; }
 }
