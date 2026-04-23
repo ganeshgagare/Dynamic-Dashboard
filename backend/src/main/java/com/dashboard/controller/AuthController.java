@@ -1,8 +1,13 @@
 package com.dashboard.controller;
 
+import com.dashboard.dto.LoginRequest;
+import com.dashboard.dto.RegisterRequest;
 import com.dashboard.model.User;
+import com.dashboard.security.JwtUtil;
 import com.dashboard.service.AuthService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -13,70 +18,91 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtUtil     jwtUtil;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, JwtUtil jwtUtil) {
         this.authService = authService;
+        this.jwtUtil     = jwtUtil;
     }
 
+    /** Public: register a new user. Role is always set to "Viewer" for self-registration. */
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody Map<String, String> body) {
-        try {
-            String name     = required(body, "name");
-            String email    = required(body, "email");
-            String password = required(body, "password");
-            String role     = body.getOrDefault("role", "Viewer");
-
-            User user = authService.register(name, email, password, role);
-            return ResponseEntity.ok(safeUser(user));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest body) {
+        User user = authService.register(
+                body.getName(), body.getEmail(), body.getPassword(), "Viewer");
+        String token = jwtUtil.generateToken(user);
+        return ResponseEntity.ok(buildAuthResponse(user, token));
     }
 
+    /** Public: authenticate and receive a JWT. */
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
-        try {
-            String email    = required(body, "email");
-            String password = required(body, "password");
-
-            User user = authService.login(email, password);
-            return ResponseEntity.ok(safeUser(user));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(401).body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest body) {
+        User user = authService.login(body.getEmail(), body.getPassword());
+        String token = jwtUtil.generateToken(user);
+        return ResponseEntity.ok(buildAuthResponse(user, token));
     }
 
+    /** Protected: update display name and email. */
+    @PutMapping("/update/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> updateProfile(@PathVariable Long id,
+                                            @RequestBody Map<String, String> body) {
+        String name  = required(body, "name");
+        String email = required(body, "email");
+        User user = authService.updateProfile(id, name, email);
+        return ResponseEntity.ok(safeUser(user));
+    }
+
+    /** Protected: update dashboard/notification preferences. */
     @PutMapping("/update/{id}/prefs")
-    public ResponseEntity<?> updatePreferences(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        try {
-            String prefs = required(body, "preferences");
-            User user = authService.updatePreferences(id, prefs);
-            return ResponseEntity.ok(safeUser(user));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> updatePreferences(@PathVariable Long id,
+                                                @RequestBody Map<String, String> body) {
+        String prefs = required(body, "preferences");
+        User user = authService.updatePreferences(id, prefs);
+        return ResponseEntity.ok(safeUser(user));
     }
 
+    /** Protected: change password. */
     @PutMapping("/update/{id}/password")
-    public ResponseEntity<?> updatePassword(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        try {
-            String oldPassword = required(body, "oldPassword");
-            String newPassword = required(body, "newPassword");
-            
-            User user = authService.updatePassword(id, oldPassword, newPassword);
-            return ResponseEntity.ok(Map.of("message", "Password updated successfully"));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> updatePassword(@PathVariable Long id,
+                                             @RequestBody Map<String, String> body) {
+        String oldPassword = required(body, "oldPassword");
+        String newPassword = required(body, "newPassword");
+        authService.updatePassword(id, oldPassword, newPassword);
+        return ResponseEntity.ok(Map.of("message", "Password updated successfully"));
     }
 
-    // Return user info WITHOUT the hashed password
+    /** Admin-only: assign a privileged role to an existing user. */
+    @PutMapping("/update/{id}/role")
+    @PreAuthorize("hasRole('Admin')")
+    public ResponseEntity<?> updateRole(@PathVariable Long id,
+                                         @RequestBody Map<String, String> body) {
+        String role = required(body, "role");
+        User user = authService.updateRole(id, role);
+        return ResponseEntity.ok(safeUser(user));
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private Map<String, Object> buildAuthResponse(User u, String token) {
+        return Map.of(
+            "token",       token,
+            "id",          u.getId(),
+            "name",        u.getName(),
+            "email",       u.getEmail(),
+            "role",        u.getRole(),
+            "preferences", u.getPreferences() != null ? u.getPreferences() : "{}"
+        );
+    }
+
     private Map<String, Object> safeUser(User u) {
         return Map.of(
-            "id",    u.getId(),
-            "name",  u.getName(),
-            "email", u.getEmail(),
-            "role",  u.getRole(),
+            "id",          u.getId(),
+            "name",        u.getName(),
+            "email",       u.getEmail(),
+            "role",        u.getRole(),
             "preferences", u.getPreferences() != null ? u.getPreferences() : "{}"
         );
     }
@@ -86,17 +112,5 @@ public class AuthController {
         if (val == null || val.isBlank()) throw new IllegalArgumentException(key + " is required.");
         return val.trim();
     }
-    
-    @PutMapping("/update/{id}")
-    public ResponseEntity<?> updateProfile(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        try {
-            String name  = required(body, "name");
-            String email = required(body, "email");
-            
-            User user = authService.updateProfile(id, name, email);
-            return ResponseEntity.ok(safeUser(user));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
 }
+

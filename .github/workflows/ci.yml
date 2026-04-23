@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  # ── Backend: Maven build + test ──────────────────────────────────────────────
+  backend:
+    name: Backend (Java 17 / Maven)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build and test
+        run: mvn --no-transfer-progress verify
+        working-directory: backend
+        env:
+          # Provide minimal env so the app context can start without a real DB
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: dashboard_db
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          JWT_SECRET: ci-test-secret-key-must-be-at-least-32-chars!!
+          SPRING_FLYWAY_ENABLED: "false"
+          SPRING_JPA_HIBERNATE_DDL_AUTO: none
+
+  # ── Frontend: npm install + lint + build ────────────────────────────────────
+  frontend:
+    name: Frontend (Node / Vite)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Lint
+        run: npm run lint
+        working-directory: frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: frontend

@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import axios from 'axios';
-import API_BASE from '../config.js';
+import api from '../api.js';
 
 export function SettingsPage({ user, onUpdateUser }) {
   const prefs = user?.preferences ? JSON.parse(user.preferences) : {};
@@ -23,12 +22,12 @@ export function SettingsPage({ user, onUpdateUser }) {
     
     try {
       // 1. Profile Update
-      const { data: updatedProfile } = await axios.put(`${API_BASE}/api/auth/update/${user.id}`, profile);
+      const { data: updatedProfile } = await api.put(`/api/auth/update/${user.id}`, profile);
       let mergedUser = updatedProfile;
 
       // 2. Preferences Update
       const prefsPayload = JSON.stringify({ notif, dashPrefs });
-      const { data: updatedPrefs } = await axios.put(`${API_BASE}/api/auth/update/${user.id}/prefs`, { preferences: prefsPayload });
+      const { data: updatedPrefs } = await api.put(`/api/auth/update/${user.id}/prefs`, { preferences: prefsPayload });
       mergedUser = { ...mergedUser, preferences: updatedPrefs.preferences };
 
       // 3. Password Update
@@ -36,7 +35,7 @@ export function SettingsPage({ user, onUpdateUser }) {
         if (!passwords.old) { setError('Current password required to change password.'); return; }
         if (passwords.new !== passwords.confirm) { setError('New passwords do not match.'); return; }
         
-        await axios.put(`${API_BASE}/api/auth/update/${user.id}/password`, {
+        await api.put(`/api/auth/update/${user.id}/password`, {
           oldPassword: passwords.old,
           newPassword: passwords.new
         });

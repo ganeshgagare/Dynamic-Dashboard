@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { DataTable } from '../components/DataTable';
-
-const STATUSES = ['All', 'Completed', 'Pending', 'In Progress'];
-const CATEGORIES = ['All', 'Development', 'Design', 'Marketing', 'QA', 'DevOps', 'Analytics'];
+import { STATUSES, CATEGORIES } from '../constants.js';
 
 export function TasksPage({ data }) {
   const [status, setStatus] = useState('All');

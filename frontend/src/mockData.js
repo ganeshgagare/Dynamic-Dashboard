@@ -1,7 +1,6 @@
-import axios from 'axios';
-import API_BASE from './config.js';
+import api from './api.js';
 
-const API_BASE_URL = `${API_BASE}/api`;
+const API_BASE_URL = `/api`;
 
 
 const statuses = ['Completed', 'Pending', 'In Progress'];
@@ -36,7 +35,7 @@ export function generateMockData(count = 30) {
 
 export async function fetchDashboardData() {
   try {
-    const res = await axios.get(`${API_BASE_URL}/dashboard-data`, { timeout: 3000 });
+    const res = await api.get(`${API_BASE_URL}/dashboard-data`, { timeout: 3000 });
     return res.data;
   } catch {
     // Fallback to mock data when backend is not running
