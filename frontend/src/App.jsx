@@ -13,6 +13,7 @@ import { HelpPage } from './pages/HelpPage';
 import { fetchDashboardData } from './mockData';
 import { STATUSES, CATEGORIES } from './constants.js';
 import API_BASE from './config.js';
+import api from './api.js';
 
 const PAGE_TITLES = {
   dashboard: { title: 'Dashboard', sub: 'Overview of all metrics' },
@@ -271,15 +272,12 @@ function NewDatasourceModal({ onClose, onTest }) {
         dbUrl = 'jdbc:' + formData.dbType.toLowerCase() + '://' + dbUrl;
       }
 
-      const res = await fetch(`${API_BASE}/api/datasource/test`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('dp_token') || ''}`
-        },
-        body: JSON.stringify({ url: dbUrl, username: formData.username, password: formData.password })
+      const res = await api.post('/api/datasource/test', {
+        url: dbUrl,
+        username: formData.username,
+        password: formData.password
       });
-      const data = await res.json();
+      const data = res.data;
       if (data.success) {
         alert(`✅ Connection to ${formData.dbType} successful!\nLoaded ${data.data?.length || 0} records.`);
         if (data.data && data.data.length > 0) {
