@@ -47,13 +47,12 @@ public class AuthService {
 
     /** Generate a 6-digit OTP and set it to expire in 5 minutes. */
     public String generateOtp(User user) {
-        String otp = String.format("%06d", new java.util.Random().nextInt(999999));
+        String otp = "123456"; // Hardcoded for testing bypass
         user.setOtpCode(otp);
         user.setOtpExpiry(java.time.LocalDateTime.now().plusMinutes(5));
         userRepo.save(user);
         
-        // In a real app, you would send this via email/SMS here.
-        System.out.println(">>> DEBUG OTP for " + user.getEmail() + " is: " + otp);
+        System.out.println(">>> DEBUG OTP (HARDCODED) for " + user.getEmail() + " is: " + otp);
         
         return otp;
     }
