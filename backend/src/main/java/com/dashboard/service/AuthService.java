@@ -2,7 +2,7 @@ package com.dashboard.service;
 
 import com.dashboard.model.User;
 import com.dashboard.repository.UserRepository;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -11,10 +11,11 @@ import java.util.Optional;
 public class AuthService {
 
     private final UserRepository userRepo;
-    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+    private final PasswordEncoder encoder;
 
-    public AuthService(UserRepository userRepo) {
+    public AuthService(UserRepository userRepo, PasswordEncoder encoder) {
         this.userRepo = userRepo;
+        this.encoder  = encoder;
     }
 
     /** Register a new user. Returns saved User or throws if email already exists. */
@@ -72,6 +73,14 @@ public class AuthService {
         }
         
         user.setPassword(encoder.encode(newPassword));
+        return userRepo.save(user);
+    }
+
+    /** Admin-only: assign a role to any user. */
+    public User updateRole(Long id, String role) {
+        User user = userRepo.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        user.setRole(role);
         return userRepo.save(user);
     }
 }

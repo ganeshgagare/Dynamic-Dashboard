@@ -11,6 +11,7 @@ import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { HelpPage } from './pages/HelpPage';
 import { fetchDashboardData } from './mockData';
+import { STATUSES, CATEGORIES } from './constants.js';
 import API_BASE from './config.js';
 
 const PAGE_TITLES = {
@@ -24,8 +25,6 @@ const PAGE_TITLES = {
 
 function DashboardHome({ data, onRefresh, loading, dashPrefs }) {
   const [filters, setFilters] = useState({ status: 'All', category: 'All', search: '' });
-  const STATUSES = ['All', 'Completed', 'Pending', 'In Progress'];
-  const CATEGORIES = ['All', 'Development', 'Design', 'Marketing', 'QA', 'DevOps', 'Analytics'];
 
   const filtered = useMemo(() => data.filter(d => {
     if (filters.status !== 'All' && d.status !== filters.status) return false;
@@ -274,7 +273,10 @@ function NewDatasourceModal({ onClose, onTest }) {
 
       const res = await fetch(`${API_BASE}/api/datasource/test`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('dp_token') || ''}`
+        },
         body: JSON.stringify({ url: dbUrl, username: formData.username, password: formData.password })
       });
       const data = await res.json();
@@ -411,6 +413,7 @@ function AppInner() {
   const [importSource,  setImportSource]  = useState('');
   const [rawData, setRawData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState('');
   const [lastUpdated, setLastUpdated] = useState(null);
   
   const [collapsed, setCollapsed] = useState(false);
@@ -422,21 +425,30 @@ function AppInner() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setApiError('');
     try {
       const data = await fetchDashboardData();
       setRawData(data);
       setLastUpdated(new Date());
+    } catch (err) {
+      setApiError('Failed to load dashboard data. Please refresh or check the backend.');
     } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { if (user) loadData(); }, [user, loadData]);
 
   const handleLogin = (u) => {
-    sessionStorage.setItem('dp_user', JSON.stringify(u));
-    setUser(u);
+    // u contains { token, id, name, email, role, preferences }
+    if (u.token) {
+      localStorage.setItem('dp_token', u.token);
+    }
+    const { token: _token, ...userWithoutToken } = u;
+    sessionStorage.setItem('dp_user', JSON.stringify(userWithoutToken));
+    setUser(userWithoutToken);
     window.location.hash = '#/dashboard';
   };
   const handleLogout = () => {
+    localStorage.removeItem('dp_token');
     sessionStorage.removeItem('dp_user');
     setUser(null);
     setActiveNav('dashboard');
@@ -520,6 +532,17 @@ function AppInner() {
            setLastUpdated(new Date());
         }} />}
         {showImportModal && <ImportDashboardModal onClose={() => setShowImportModal(false)} onImport={(data, name) => handleImportData(data, name)} />}
+
+        {apiError && (
+          <div style={{
+            background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)',
+            color: '#fca5a5', padding: '10px 20px', fontSize: '13px',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+          }}>
+            <span>⚠ {apiError}</span>
+            <button onClick={() => setApiError('')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '16px' }}>✕</button>
+          </div>
+        )}
 
         <main className="page-content">
           {loading && ['dashboard','analytics','tasks','reports'].includes(activeNav) ? (

@@ -3,15 +3,11 @@ import axios from 'axios';
 import API_BASE from '../config.js';
 import './auth.css';
 
-const ROLES = ['Admin', 'Manager', 'Analyst', 'Viewer'];
-const ROLE_ICONS = { Admin: '👑', Manager: '🎯', Analyst: '📊', Viewer: '👁' };
-
 const API = `${API_BASE}/api/auth`;
-
 
 export function LoginPage({ onLogin }) {
   const [tab, setTab]       = useState('login');
-  const [form, setForm]     = useState({ name: '', email: '', password: '', role: 'Admin' });
+  const [form, setForm]     = useState({ name: '', email: '', password: '' });
   const [error, setError]   = useState('');
   const [loading, setLoading] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
@@ -22,7 +18,6 @@ export function LoginPage({ onLogin }) {
     e.preventDefault();
     setError('');
 
-    // Basic client-side validation
     if (!form.email.trim() || !form.password.trim()) {
       setError('Email and password are required.'); return;
     }
@@ -38,16 +33,20 @@ export function LoginPage({ onLogin }) {
       const endpoint = tab === 'login' ? `${API}/login` : `${API}/register`;
       const payload  = tab === 'login'
         ? { email: form.email.trim(), password: form.password }
-        : { name: form.name.trim(), email: form.email.trim(), password: form.password, role: form.role };
+        : { name: form.name.trim(), email: form.email.trim(), password: form.password };
 
       const { data } = await axios.post(endpoint, payload);
-      // data = { id, name, email, role }
+      // data = { token, id, name, email, role, preferences }
+      if (data.token) {
+        localStorage.setItem('dp_token', data.token);
+      }
       onLogin(data);
 
     } catch (err) {
       if (err.code === 'ERR_NETWORK' || err.code === 'ECONNREFUSED') {
-        // Backend not running → inform user clearly
         setError('⚠ Backend server is offline. Start Spring Boot to enable real authentication.');
+      } else if (err.response?.data?.message) {
+        setError(err.response.data.message);
       } else if (err.response?.data?.error) {
         setError(err.response.data.error);
       } else {
@@ -113,19 +112,9 @@ export function LoginPage({ onLogin }) {
           </div>
 
           {tab === 'register' && (
-            <div className="auth-field">
-              <label>Select Role</label>
-              <div className="role-grid">
-                {ROLES.map(r => (
-                  <button type="button" key={r}
-                    className={`role-btn ${form.role===r?'active':''}`}
-                    onClick={() => set('role', r)}>
-                    <span className="role-icon">{ROLE_ICONS[r]}</span>
-                    <span>{r}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            <p className="auth-backend-note" style={{ marginTop: 0 }}>
+              🔒 New accounts are created with the <strong>Viewer</strong> role. An Admin can promote your role after registration.
+            </p>
           )}
 
           {error && <div className="auth-error">{error}</div>}
@@ -145,3 +134,4 @@ export function LoginPage({ onLogin }) {
     </div>
   );
 }
+
