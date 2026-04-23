@@ -6,11 +6,16 @@ on:
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: read
+
 jobs:
   # ── Backend: Maven build + test ──────────────────────────────────────────────
   backend:
     name: Backend (Java 17 / Maven)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -40,6 +45,8 @@ jobs:
   frontend:
     name: Frontend (Node / Vite)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
