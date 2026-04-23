@@ -45,11 +45,15 @@ public class AuthController {
     /** Public: verify OTP and issue JWT. */
     @PostMapping("/verify-otp")
     public ResponseEntity<?> verifyOtp(@RequestBody Map<String, String> body) {
-        String email = required(body, "email");
-        String otp   = required(body, "otp");
-        User user = authService.verifyOtp(email, otp);
-        String token = jwtUtil.generateToken(user);
-        return ResponseEntity.ok(buildAuthResponse(user, token));
+        try {
+            String email = required(body, "email");
+            String otp   = required(body, "otp");
+            User user = authService.verifyOtp(email, otp);
+            String token = jwtUtil.generateToken(user);
+            return ResponseEntity.ok(buildAuthResponse(user, token));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     /** Protected: update display name and email. */
