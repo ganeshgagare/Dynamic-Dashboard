@@ -51,8 +51,9 @@ public class AuthController {
             User user = authService.verifyOtp(email, otp);
             String token = jwtUtil.generateToken(user);
             return ResponseEntity.ok(buildAuthResponse(user, token));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace(); // Print to server console
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Unknown verification error"));
         }
     }
 
@@ -61,10 +62,14 @@ public class AuthController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> updateProfile(@PathVariable Long id,
                                             @RequestBody Map<String, String> body) {
-        String name  = required(body, "name");
-        String email = required(body, "email");
-        User user = authService.updateProfile(id, name, email);
-        return ResponseEntity.ok(safeUser(user));
+        try {
+            String name  = required(body, "name");
+            String email = required(body, "email");
+            User user = authService.updateProfile(id, name, email);
+            return ResponseEntity.ok(safeUser(user));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     /** Protected: update dashboard/notification preferences. */
@@ -72,9 +77,13 @@ public class AuthController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> updatePreferences(@PathVariable Long id,
                                                 @RequestBody Map<String, String> body) {
-        String prefs = required(body, "preferences");
-        User user = authService.updatePreferences(id, prefs);
-        return ResponseEntity.ok(safeUser(user));
+        try {
+            String prefs = required(body, "preferences");
+            User user = authService.updatePreferences(id, prefs);
+            return ResponseEntity.ok(safeUser(user));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     /** Protected: change password. */
@@ -82,10 +91,14 @@ public class AuthController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> updatePassword(@PathVariable Long id,
                                              @RequestBody Map<String, String> body) {
-        String oldPassword = required(body, "oldPassword");
-        String newPassword = required(body, "newPassword");
-        authService.updatePassword(id, oldPassword, newPassword);
-        return ResponseEntity.ok(Map.of("message", "Password updated successfully"));
+        try {
+            String oldPassword = required(body, "oldPassword");
+            String newPassword = required(body, "newPassword");
+            authService.updatePassword(id, oldPassword, newPassword);
+            return ResponseEntity.ok(Map.of("message", "Password updated successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     /** Admin-only: assign a privileged role to an existing user. */
@@ -93,32 +106,36 @@ public class AuthController {
     @PreAuthorize("hasRole('Admin')")
     public ResponseEntity<?> updateRole(@PathVariable Long id,
                                          @RequestBody Map<String, String> body) {
-        String role = required(body, "role");
-        User user = authService.updateRole(id, role);
-        return ResponseEntity.ok(safeUser(user));
+        try {
+            String role = required(body, "role");
+            User user = authService.updateRole(id, role);
+            return ResponseEntity.ok(safeUser(user));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private Map<String, Object> buildAuthResponse(User u, String token) {
-        return Map.of(
-            "token",       token,
-            "id",          u.getId(),
-            "name",        u.getName(),
-            "email",       u.getEmail(),
-            "role",        u.getRole(),
-            "preferences", u.getPreferences() != null ? u.getPreferences() : "{}"
-        );
+        Map<String, Object> map = new java.util.HashMap<>();
+        map.put("token",       token);
+        map.put("id",          u.getId());
+        map.put("name",        u.getName());
+        map.put("email",       u.getEmail());
+        map.put("role",        u.getRole());
+        map.put("preferences", u.getPreferences() != null ? u.getPreferences() : "{}");
+        return map;
     }
 
     private Map<String, Object> safeUser(User u) {
-        return Map.of(
-            "id",          u.getId(),
-            "name",        u.getName(),
-            "email",       u.getEmail(),
-            "role",        u.getRole(),
-            "preferences", u.getPreferences() != null ? u.getPreferences() : "{}"
-        );
+        Map<String, Object> map = new java.util.HashMap<>();
+        map.put("id",          u.getId());
+        map.put("name",        u.getName());
+        map.put("email",       u.getEmail());
+        map.put("role",        u.getRole());
+        map.put("preferences", u.getPreferences() != null ? u.getPreferences() : "{}");
+        return map;
     }
 
     private String required(Map<String, String> body, String key) {
