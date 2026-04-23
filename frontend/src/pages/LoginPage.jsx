@@ -10,6 +10,7 @@ export function LoginPage({ onLogin }) {
   const [form, setForm]     = useState({ name: '', email: '', password: '' });
   const [error, setError]   = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
   const [otpStep, setOtpStep] = useState(false);
   const [otpValue, setOtpValue] = useState('');
 
