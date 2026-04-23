@@ -34,7 +34,7 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 // Public — login and registration
-                .requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/verify-otp").permitAll()
                 // Protected — everything else requires a valid JWT
                 .anyRequest().authenticated()
             )
