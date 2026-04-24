@@ -159,7 +159,7 @@ function NewDatasourceModal({ onClose, onTest }) {
       } else {
         alert('❌ Connection failed: ' + res.data.message);
       }
-    } catch (e) {
+    } catch (_e) {
       alert('❌ Error connecting to server');
     } finally {
       setTesting(false);
@@ -216,7 +216,7 @@ function ImportDashboardModal({ onClose, onImport }) {
         const json = JSON.parse(e.target.result);
         onImport(json);
         onClose();
-      } catch (err) { alert("Invalid JSON file."); }
+      } catch (_err) { alert("Invalid JSON file."); }
     };
     reader.readAsText(file);
   };
@@ -316,6 +316,7 @@ function AppInner() {
     } finally { setLoading(false); }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (user) loadData(); }, [user, loadData]);
 
   const handleLogin = (u) => {
