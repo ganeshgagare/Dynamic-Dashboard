@@ -1,35 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../../api.js';
 
 export function MappingModal({ widget, dsConfig, sourceType, localData, onSave, onClose }) {
-  const [schema, setSchema] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Initialize state directly from props to avoid cascading renders in useEffect
+  const [schema, setSchema] = useState(() => {
+    if (sourceType === 'json' && localData && localData.length > 0) {
+      return { "Imported File": Object.keys(localData[0]) };
+    }
+    return null;
+  });
+
+  const [loading, setLoading] = useState(() => {
+    return sourceType !== 'json'; // Only load if not JSON
+  });
+
   const [error, setError] = useState('');
   
-  if (!widget) return null;
+  const [selectedTable, setSelectedTable] = useState(() => {
+    if (sourceType === 'json') return "Imported File";
+    return widget?.table || '';
+  });
 
-  const [selectedTable, setSelectedTable] = useState(widget.table || '');
-  const [mapping, setMapping] = useState(widget.mapping || {
+  const [mapping, setMapping] = useState(widget?.mapping || {
     name: '',
     status: '',
     category: '',
     value: ''
   });
 
-  useEffect(() => {
-    if (sourceType === 'json') {
-      if (localData && localData.length > 0) {
-        const keys = Object.keys(localData[0]);
-        setSchema({ "Imported File": keys });
-        setSelectedTable("Imported File");
-      }
-      setLoading(false);
-    } else if (dsConfig) {
-      fetchSchema();
-    }
-  }, [dsConfig, sourceType, localData]);
-
-  const fetchSchema = async () => {
+  const fetchSchema = useCallback(async () => {
+    if (!dsConfig) return;
+    setLoading(true);
     try {
       const { data } = await api.post('/api/datasource/inspect', dsConfig);
       if (data.success) {
@@ -37,19 +38,39 @@ export function MappingModal({ widget, dsConfig, sourceType, localData, onSave, 
       } else {
         setError(data.message);
       }
-    } catch (err) {
+    } catch {
       setError('Failed to inspect database schema');
     } finally {
       setLoading(false);
     }
-  };
+  }, [dsConfig]);
+
+  useEffect(() => {
+    if (sourceType === 'db' && dsConfig) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchSchema();
+    }
+  }, [sourceType, dsConfig, fetchSchema]);
 
   const handleSave = () => {
     if (!selectedTable) { alert('Select a table first'); return; }
     onSave({ table: selectedTable, mapping });
   };
 
-  if (loading) return <div className="modal-overlay"><div className="modal-content">Loading schema...</div></div>;
+  if (!widget) return null;
+
+  if (loading) {
+    return (
+      <div className="modal-overlay">
+        <div className="modal-content mapping-modal">
+          <div className="modal-body" style={{ padding: '40px', textAlign: 'center' }}>
+            <span className="auth-spinner" style={{ margin: '0 auto 20px' }} />
+            <p>Scanning your database schema...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="modal-overlay">
@@ -78,7 +99,7 @@ export function MappingModal({ widget, dsConfig, sourceType, localData, onSave, 
             </select>
           </div>
 
-          {selectedTable && (
+          {selectedTable && schema && schema[selectedTable] && (
             <div className="mapping-fields">
               <h4>🎯 Data Field Mapping</h4>
               <p className="map-hint">Match your database columns to the fields required by the charts.</p>

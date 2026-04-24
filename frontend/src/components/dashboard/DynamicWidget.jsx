@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../../api.js';
 import { StatusBarChart, ActivityLineChart, StatusPieChart, CategoryBarChart, ChartErrorBoundary } from '../Charts.jsx';
 
@@ -7,18 +7,8 @@ export function DynamicWidget({ widget, onRemove, onConfigure, dsConfig, sourceT
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (widget.table && widget.mapping) {
-      if (sourceType === 'json') {
-        applyLocalMapping();
-      } else if (dsConfig) {
-        fetchData();
-      }
-    }
-  }, [widget.table, widget.mapping, dsConfig, sourceType, localData]);
-
-  const applyLocalMapping = () => {
-    if (!localData) return;
+  const applyLocalMapping = useCallback(() => {
+    if (!localData || !widget.mapping) return;
     const mapped = localData.map(item => ({
       name:     item[widget.mapping.name],
       status:   item[widget.mapping.status],
@@ -26,9 +16,10 @@ export function DynamicWidget({ widget, onRemove, onConfigure, dsConfig, sourceT
       value:    Number(item[widget.mapping.value] || 0)
     }));
     setData(mapped);
-  };
+  }, [localData, widget.mapping]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    if (!widget.table || !widget.mapping) return;
     setLoading(true);
     setError('');
     try {
@@ -44,7 +35,18 @@ export function DynamicWidget({ widget, onRemove, onConfigure, dsConfig, sourceT
     } finally {
       setLoading(false);
     }
-  };
+  }, [dsConfig, widget.table, widget.mapping]);
+
+  useEffect(() => {
+    if (widget.table && widget.mapping) {
+      if (sourceType === 'json') {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        applyLocalMapping();
+      } else if (dsConfig) {
+        fetchData();
+      }
+    }
+  }, [widget.table, widget.mapping, dsConfig, sourceType, applyLocalMapping, fetchData]);
 
   const renderChart = () => {
     if (!widget.table || !widget.mapping) {
@@ -76,7 +78,7 @@ export function DynamicWidget({ widget, onRemove, onConfigure, dsConfig, sourceT
   const toggleWidth = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const newWidth = widget.width === 'half' ? 'full' : 'half';
+    const newWidth = widget.width === 'full' ? 'half' : 'full';
     onUpdate({ width: newWidth });
   };
 
