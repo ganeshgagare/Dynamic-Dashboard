@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { DashboardCanvas } from './DashboardCanvas.jsx';
 
 export function DashboardBuilder({ data, widgets, onDrop, onRemove, onConfigure, onUpdateWidget, dsConfig, sourceType, sourceName, onReset, rowLimit, onLimitChange }) {

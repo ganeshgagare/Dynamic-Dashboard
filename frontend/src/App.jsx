@@ -12,8 +12,6 @@ import { SettingsPage } from './pages/SettingsPage';
 import { HelpPage } from './pages/HelpPage';
 import { fetchDashboardData } from './mockData';
 import { STATUSES, CATEGORIES } from './constants.js';
-import API_BASE from './config.js';
-import api from './api.js';
 
 import { DashboardBuilder } from './components/dashboard/DashboardBuilder.jsx';
 import './components/dashboard/dashboard.css';

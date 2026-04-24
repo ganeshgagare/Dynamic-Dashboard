@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../../api.js';
 
 export function MappingModal({ widget, dsConfig, sourceType, localData, onSave, onClose }) {

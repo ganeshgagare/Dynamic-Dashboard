@@ -1,4 +1,4 @@
-import React, { useMemo, Component } from 'react';
+import { useMemo, Component } from 'react';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer

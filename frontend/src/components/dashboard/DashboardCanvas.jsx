@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { DynamicWidget } from './DynamicWidget.jsx';
 
 export function DashboardCanvas({ widgets, onDrop, onRemove, onConfigure, onUpdateWidget, dsConfig, sourceType, localData }) {

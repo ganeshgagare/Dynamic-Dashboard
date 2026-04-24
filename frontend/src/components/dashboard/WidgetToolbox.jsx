@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 const WIDGET_TYPES = [
   { type: 'Bar Chart', icon: '📊' },
