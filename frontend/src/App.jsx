@@ -378,12 +378,7 @@ function AppInner() {
               </linearGradient></defs>
             </svg>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <h1 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span className="live-dot" />{title}</h1>
-                <span className="custom-db-record-count" style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', background: 'var(--accent-glow)', color: 'var(--accent)', fontWeight: '700' }}>
-                  {(importedData || rawData || []).length.toLocaleString()} Records
-                </span>
-              </div>
+              <h1 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span className="live-dot" />{title}</h1>
               <p>{lastUpdated ? `Updated: ${lastUpdated.toLocaleTimeString()}` : sub}</p>
             </div>
           </div>
