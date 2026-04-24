@@ -1,12 +1,31 @@
-import { useMemo } from 'react';
+import React, { useMemo, Component } from 'react';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 
-const COLORS = { Completed: '#10b981', Pending: '#f59e0b', 'In Progress': '#3b82f6' };
-const CAT_COLORS = ['#6366f1','#a78bfa','#ec4899','#f59e0b','#10b981','#3b82f6'];
+export class ChartErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError(error) { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="chart-error-fallback">
+          <div className="fallback-icon">⚠️</div>
+          <p>This chart couldn't be rendered due to data inconsistencies.</p>
+          <button className="btn-retry" onClick={() => this.setState({ hasError: false })}>
+            Try Again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const tooltipStyle = {
   backgroundColor: '#1a2035',
@@ -53,9 +72,16 @@ export function ActivityLineChart({ data }) {
   const chartData = useMemo(() => {
     const byDate = {};
     data.forEach(d => {
-      const month = format(parseISO(d.date), 'MMM yy');
+      if (!d.date) return;
+      
+      const dateObj = new Date(d.date);
+      // Check if valid date
+      if (isNaN(dateObj.getTime())) return;
+      
+      const month = format(dateObj, 'MMM yy');
       byDate[month] = (byDate[month] || 0) + 1;
     });
+    
     return Object.entries(byDate)
       .sort((a, b) => new Date('01 ' + a[0]) - new Date('01 ' + b[0]))
       .slice(-10)

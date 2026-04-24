@@ -15,6 +15,12 @@ import { STATUSES, CATEGORIES } from './constants.js';
 import API_BASE from './config.js';
 import api from './api.js';
 
+import { WidgetToolbox } from './components/dashboard/WidgetToolbox.jsx';
+import { DashboardCanvas } from './components/dashboard/DashboardCanvas.jsx';
+import { MappingModal } from './components/dashboard/MappingModal.jsx';
+import { DashboardBuilder } from './components/dashboard/DashboardBuilder.jsx';
+import './components/dashboard/dashboard.css';
+
 const PAGE_TITLES = {
   dashboard: { title: 'Dashboard', sub: 'Overview of all metrics' },
   analytics:  { title: 'Analytics',  sub: 'Deep dive into performance data' },
@@ -290,7 +296,11 @@ function NewDatasourceModal({ onClose, onTest }) {
       if (data.success) {
         alert(`✅ Connection to ${formData.dbType} successful!\nLoaded ${data.data?.length || 0} records.`);
         if (data.data && data.data.length > 0) {
-          onTest(data.data);
+          onTest(data.data, formData.name, {
+            url: dbUrl,
+            username: formData.username,
+            password: formData.password
+          });
         }
         onClose();
       } else {
@@ -429,6 +439,33 @@ function AppInner() {
   const [showMenu, setShowMenu] = useState(false);
   const [showDSModal, setShowDSModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showMappingModal, setShowMappingModal] = useState(null); // widgetId
+
+  // Builder State
+  const [widgets, setWidgets] = useState([]);
+  const [dsConfig, setDsConfig] = useState(null); // { url, username, password }
+  const [builderSourceType, setBuilderSourceType] = useState(null); // 'db' or 'json'
+  const [rowLimit, setRowLimit] = useState(100); // Default row limit for safety
+
+  const handleAddWidget = (type) => {
+    const newWidget = {
+      id: Date.now().toString(),
+      type,
+      table: '',
+      mapping: null,
+      width: 'half' // default width
+    };
+    setWidgets([...widgets, newWidget]);
+  };
+
+  const handleRemoveWidget = (id) => {
+    setWidgets(widgets.filter(w => w.id !== id));
+  };
+
+  const handleUpdateWidget = (id, config) => {
+    setWidgets(widgets.map(w => w.id === id ? { ...w, ...config } : w));
+    setShowMappingModal(null);
+  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -472,6 +509,7 @@ function AppInner() {
     if (Array.isArray(jsonData)) {
       setImportedData(jsonData);
       setImportSource(sourceName);
+      setBuilderSourceType('json'); // Trigger Builder for JSON
       setLastUpdated(new Date());
     } else {
       alert('❌ Invalid JSON format. Expected an array.');
@@ -481,6 +519,8 @@ function AppInner() {
   const handleResetImport = () => {
     setImportedData(null);
     setImportSource('');
+    setBuilderSourceType(null);
+    setWidgets([]);
   };
 
   if (!user) return <LoginPage onLogin={handleLogin} />;
@@ -534,12 +574,25 @@ function AppInner() {
           </div>
         </header>
 
-        {showDSModal && <NewDatasourceModal onClose={() => setShowDSModal(false)} onTest={(fetchedData, dsName) => {
+        {showDSModal && <NewDatasourceModal onClose={() => setShowDSModal(false)} onTest={(fetchedData, dsName, config) => {
            setImportedData(fetchedData);
            setImportSource(dsName || 'Database Connection');
+           setDsConfig(config);
+           setBuilderSourceType('db');
            setLastUpdated(new Date());
         }} />}
         {showImportModal && <ImportDashboardModal onClose={() => setShowImportModal(false)} onImport={(data, name) => handleImportData(data, name)} />}
+
+        {showMappingModal && (
+          <MappingModal 
+            widget={widgets.find(w => w.id === showMappingModal)}
+            dsConfig={dsConfig}
+            sourceType={builderSourceType}
+            localData={importedData}
+            onClose={() => setShowMappingModal(null)}
+            onSave={(config) => handleUpdateWidget(showMappingModal, config)}
+          />
+        )}
 
         {apiError && (
           <div style={{
@@ -561,8 +614,21 @@ function AppInner() {
           ) : (
             <>
               {activeNav === 'dashboard' && (
-                importedData
-                  ? <CustomDashboard data={importedData} sourceName={importSource} onReset={handleResetImport} />
+                builderSourceType 
+                  ? <DashboardBuilder 
+                      data={(importedData || rawData).slice(0, rowLimit || undefined)}
+                      widgets={widgets}
+                      onDrop={handleAddWidget}
+                      onRemove={handleRemoveWidget}
+                      onConfigure={setShowMappingModal}
+                      onUpdateWidget={handleUpdateWidget}
+                      dsConfig={dsConfig}
+                      sourceType={builderSourceType}
+                      sourceName={importSource}
+                      onReset={handleResetImport}
+                      rowLimit={rowLimit}
+                      onLimitChange={setRowLimit}
+                    />
                   : <DashboardHome data={rawData} loading={loading} onRefresh={loadData} dashPrefs={dashPrefs} />
               )}
               {activeNav === 'analytics' && <AnalyticsPage data={importedData || rawData} />}

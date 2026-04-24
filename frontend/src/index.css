@@ -519,24 +519,44 @@ body {
 
 /* ── Filters ── */
 .filters-bar {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 12px 16px; margin-bottom: 24px;
+  display: flex; 
+  align-items: center; 
+  gap: 16px; 
+  background: var(--bg-secondary); 
+  border: 1px solid var(--border);
+  border-radius: 12px; 
+  padding: 14px 20px; 
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
 }
-.filter-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.filter-label { font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
 .filter-select, .filter-input {
-  background: var(--bg-primary); border: 1px solid var(--border);
-  color: var(--text-primary); border-radius: var(--radius-sm);
-  padding: 7px 12px; font-size: 13px; font-family: inherit;
-  cursor: pointer; outline: none; transition: border-color var(--transition);
+  background: rgba(255,255,255,0.03); 
+  border: 1px solid var(--border);
+  color: var(--text-primary); 
+  border-radius: 8px;
+  padding: 8px 14px; 
+  font-size: 13px; 
+  font-family: inherit;
+  cursor: pointer; 
+  outline: none; 
+  transition: all var(--transition);
+  min-width: 140px;
 }
-.filter-select:focus, .filter-input:focus { border-color: var(--accent); }
-.filter-input { min-width: 200px; }
-.filter-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+[data-theme="light"] .filter-select, 
+[data-theme="light"] .filter-input {
+  background: #fff;
+  border-color: #e2e8f0;
+}
+.filter-select:hover, .filter-input:hover { border-color: var(--accent); }
+.filter-select:focus, .filter-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.filter-input { min-width: 240px; }
+.filter-chips { display: flex; gap: 8px; margin-left: auto; }
 .chip {
-  padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
-  background: transparent; border: 1px solid var(--border); color: var(--text-secondary);
+  padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--border); color: var(--text-secondary);
   cursor: pointer; transition: all var(--transition);
+  text-transform: uppercase; letter-spacing: 0.02em;
 }
 .chip:hover, .chip.active { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
 
@@ -915,4 +935,74 @@ body {
 }
 @media (max-width: 480px) {
   .cards-grid { grid-template-columns: 1fr; }
+}
+/* ── Vibe Picker ── */
+.sb-theme-section {
+  padding: 0 16px;
+  margin-top: 24px;
+}
+
+.vibe-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.vibe-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 4px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--text-secondary);
+}
+
+.vibe-btn:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.vibe-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+  box-shadow: 0 4px 12px var(--accent-glow-strong);
+}
+
+.vibe-icon {
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.vibe-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Cyberpunk Specific Overrides ── */
+[data-theme="cyberpunk"] .sidebar {
+  border-right: 2px solid #00ffcc;
+  box-shadow: 10px 0 20px rgba(0, 255, 204, 0.1);
+}
+
+[data-theme="cyberpunk"] .nav-item.active {
+  background: rgba(0, 255, 204, 0.1);
+  border-left: 4px solid #00ffcc;
+  color: #00ffcc;
+  text-shadow: 0 0 8px #00ffcc;
+}
+
+[data-theme="cyberpunk"] .vibe-btn.active {
+  background: #00ffcc;
+  color: #000;
+  box-shadow: 0 0 20px #00ffcc;
 }

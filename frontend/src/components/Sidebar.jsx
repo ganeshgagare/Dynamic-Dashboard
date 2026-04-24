@@ -31,7 +31,7 @@ const NAV_SYSTEM = [
 ];
 
 export function Sidebar({ active, onNav, user, onLogout }) {
-  const { dark, toggle } = useTheme();
+  const { theme, setTheme } = useTheme();
   const initials = user?.name
     ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
     : 'A';
@@ -80,15 +80,27 @@ export function Sidebar({ active, onNav, user, onLogout }) {
           </button>
         ))}
 
-        {/* ── Theme Toggle ── */}
-        <div className="sb-theme-row">
-          <div className="sb-theme-left">
-            <span className="sb-theme-icon">{dark ? '🌙' : '☀️'}</span>
-            <span className="sb-theme-label nav-label">{dark ? 'Dark' : 'Light'}</span>
+        {/* ── Theme Vibe Picker ── */}
+        <div className="sb-theme-section">
+          <p className="nav-section-label">Vibe</p>
+          <div className="vibe-picker-grid">
+            {[
+              { id: 'light', icon: '☀️', label: 'Light' },
+              { id: 'dark', icon: '🌙', label: 'Dark' },
+              { id: 'cyberpunk', icon: '⚡', label: 'Cyber' },
+              { id: 'ivory', icon: '📜', label: 'Ivory' }
+            ].map(v => (
+              <button 
+                key={v.id}
+                className={`vibe-btn ${theme === v.id ? 'active' : ''}`}
+                onClick={() => setTheme(v.id)}
+                title={v.label}
+              >
+                <span className="vibe-icon">{v.icon}</span>
+                <span className="vibe-label nav-label">{v.label}</span>
+              </button>
+            ))}
           </div>
-          <button className={`toggle-btn ${dark ? 'on' : ''}`} onClick={toggle}>
-            <span className="toggle-thumb" />
-          </button>
         </div>
 
       </nav>

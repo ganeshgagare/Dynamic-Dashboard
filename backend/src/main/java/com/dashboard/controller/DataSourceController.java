@@ -136,6 +136,51 @@ public class DataSourceController {
         }
     }
 
+    /** Execute a dynamic query with field mapping. */
+    @PostMapping("/query")
+    @PreAuthorize("hasRole('Admin')")
+    public ResponseEntity<?> executeMappedQuery(@RequestBody Map<String, Object> payload) {
+        String url      = (String) payload.get("url");
+        String username = (String) payload.get("username");
+        String password = (String) payload.get("password");
+        String table    = (String) payload.get("table");
+        Map<String, String> mapping = (Map<String, String>) payload.get("mapping");
+
+        if (url == null || table == null || mapping == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Missing required parameters"));
+        }
+
+        // Build the dynamic SQL: SELECT col1 AS name, col2 AS status ... FROM table
+        StringBuilder sql = new StringBuilder("SELECT ");
+        mapping.forEach((target, source) -> {
+            sql.append("\"").append(source).append("\" AS ").append(target).append(", ");
+        });
+        // Remove trailing comma and space
+        sql.setLength(sql.length() - 2);
+        sql.append(" FROM \"").append(table).append("\" LIMIT 1000");
+
+        try (Connection conn = DriverManager.getConnection(url, username, password);
+             java.sql.Statement stmt = conn.createStatement();
+             java.sql.ResultSet rs = stmt.executeQuery(sql.toString())) {
+            
+            List<Map<String, Object>> records = new java.util.ArrayList<>();
+            java.sql.ResultSetMetaData meta = rs.getMetaData();
+            int cols = meta.getColumnCount();
+            
+            while (rs.next()) {
+                Map<String, Object> row = new java.util.HashMap<>();
+                for (int i = 1; i <= cols; i++) {
+                    row.put(meta.getColumnLabel(i), rs.getObject(i));
+                }
+                records.add(row);
+            }
+            return ResponseEntity.ok(records);
+
+        } catch (SQLException e) {
+            return ResponseEntity.status(400).body(Map.of("error", "Query failed: " + e.getMessage()));
+        }
+    }
+
     /** Extract the hostname from a JDBC URL (jdbc:postgresql://host:port/db). */
     private String extractHost(String jdbcUrl) {
         try {
