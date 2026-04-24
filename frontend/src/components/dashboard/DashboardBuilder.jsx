@@ -50,13 +50,17 @@ export function DashboardBuilder({ data, widgets, onDrop, onRemove, onConfigure,
           <table className="preview-table">
             <thead>
               <tr>
-                {data.length > 0 && Object.keys(data[0]).slice(0, 8).map(key => <th key={key}>{key}</th>)}
+                {data && data.length > 0 && data[0] && typeof data[0] === 'object' && 
+                  Object.keys(data[0]).slice(0, 8).map(key => <th key={key}>{key}</th>)
+                }
               </tr>
             </thead>
             <tbody>
-              {data.slice(0, 5).map((row, i) => (
+              {data && data.slice(0, 5).map((row, i) => (
                 <tr key={i}>
-                  {Object.values(row).slice(0, 8).map((val, j) => <td key={j}>{String(val)}</td>)}
+                  {row && typeof row === 'object' && 
+                    Object.values(row).slice(0, 8).map((val, j) => <td key={j}>{String(val)}</td>)
+                  }
                 </tr>
               ))}
             </tbody>

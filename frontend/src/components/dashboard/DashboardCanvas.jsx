@@ -29,7 +29,7 @@ export function DashboardCanvas({ widgets, onDrop, onRemove, onConfigure, onUpda
       )}
       
       <div className="canvas-grid">
-        {widgets.map(w => (
+        {(widgets || []).map(w => (
           <DynamicWidget 
             key={w.id} 
             widget={w} 

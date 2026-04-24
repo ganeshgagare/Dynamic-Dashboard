@@ -444,14 +444,15 @@ function AppInner() {
   const [rowLimit, setRowLimit] = useState(100); // Default row limit for safety
 
   const handleAddWidget = (type) => {
+    const newId = Date.now().toString();
     const newWidget = {
-      id: Date.now().toString(),
+      id: newId,
       type,
       table: '',
       mapping: null,
-      width: 'half' // default width
+      width: 'half'
     };
-    setWidgets([...widgets, newWidget]);
+    setWidgets(prev => [...(prev || []), newWidget]);
   };
 
   const handleRemoveWidget = (id) => {
@@ -581,6 +582,7 @@ function AppInner() {
 
         {showMappingModal && (
           <MappingModal 
+            key={showMappingModal}
             widget={widgets.find(w => w.id === showMappingModal)}
             dsConfig={dsConfig}
             sourceType={builderSourceType}
@@ -612,7 +614,7 @@ function AppInner() {
               {activeNav === 'dashboard' && (
                 builderSourceType 
                   ? <DashboardBuilder 
-                      data={(importedData || rawData).slice(0, rowLimit || undefined)}
+                      data={(importedData || rawData || []).slice(0, rowLimit || undefined)}
                       widgets={widgets}
                       onDrop={handleAddWidget}
                       onRemove={handleRemoveWidget}
