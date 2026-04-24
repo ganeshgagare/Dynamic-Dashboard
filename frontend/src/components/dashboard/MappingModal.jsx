@@ -55,6 +55,7 @@ export function MappingModal({ widget, dsConfig, sourceType, localData, onSave, 
 
   useEffect(() => {
     if (sourceType === 'db' && dsConfig) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchSchema();
     }
   }, [sourceType, dsConfig, fetchSchema]);

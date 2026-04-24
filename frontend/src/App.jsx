@@ -25,13 +25,21 @@ class GlobalErrorBoundary extends Component {
     this.state = { hasError: false, error: null };
   }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, errorInfo) {
+    console.error("Global crash caught:", error, errorInfo);
+  }
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: '40px', textAlign: 'center', background: '#0f172a', color: '#f1f5f9', minHeight: '100vh' }}>
-          <h1 style={{ color: '#ef4444', marginBottom: '20px' }}>Something went wrong.</h1>
-          <p style={{ marginBottom: '20px' }}>{this.state.error?.message || 'Unknown Error'}</p>
-          <button onClick={() => window.location.reload()} className="btn btn-primary">Reload App</button>
+        <div style={{ padding: '40px', textAlign: 'center', background: '#0f172a', color: '#f1f5f9', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+          <div style={{ fontSize: '64px', marginBottom: '20px' }}>⚠️</div>
+          <h1 style={{ color: '#ef4444', marginBottom: '20px', fontSize: '2.5rem' }}>Something went wrong.</h1>
+          <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', padding: '20px', borderRadius: '12px', maxWidth: '600px', marginBottom: '30px' }}>
+            <p style={{ fontFamily: 'monospace', color: '#fca5a5' }}>{this.state.error?.message || 'Unknown Runtime Error'}</p>
+          </div>
+          <button onClick={() => window.location.reload()} className="btn btn-primary" style={{ padding: '12px 30px', fontSize: '1.1rem' }}>
+            🔄 Reload Application
+          </button>
         </div>
       );
     }
@@ -48,18 +56,15 @@ const PAGE_TITLES = {
   help:       { title: 'Help',       sub: 'Support and documentation' },
 };
 
-function DashboardHome({ data, dashPrefs, loading, onRefresh }) {
+function DashboardHome({ data, dashPrefs }) {
   const [filters, setFilters] = useState({ status: 'All', category: 'All', search: '' });
 
-  const filtered = useMemo(() => {
-    if (!data) return [];
-    return data.filter(d => {
-      if (filters.status !== 'All' && d.status !== filters.status) return false;
-      if (filters.category !== 'All' && d.category !== filters.category) return false;
-      if (filters.search && !(d.name || '').toLowerCase().includes(filters.search.toLowerCase())) return false;
-      return true;
-    });
-  }, [data, filters]);
+  const filtered = useMemo(() => (data || []).filter(d => {
+    if (filters.status !== 'All' && d.status !== filters.status) return false;
+    if (filters.category !== 'All' && d.category !== filters.category) return false;
+    if (filters.search && !(d.name || '').toLowerCase().includes(filters.search.toLowerCase())) return false;
+    return true;
+  }), [data, filters]);
 
   const stats = useMemo(() => ({
     total: filtered.length,
@@ -115,6 +120,126 @@ function DashboardHome({ data, dashPrefs, loading, onRefresh }) {
   );
 }
 
+function NewDatasourceModal({ onClose, onTest }) {
+  const [formData, setFormData] = useState({
+    dbType: 'PostgreSQL',
+    name: '',
+    url: '',
+    username: '',
+    password: ''
+  });
+  const [testing, setTesting] = useState(false);
+
+  const handleTest = async () => {
+    setTesting(true);
+    try {
+      let dbUrl = formData.url;
+      if (dbUrl.startsWith('postgresql://')) {
+        const withoutProto = dbUrl.replace('postgresql://', '');
+        const atIndex = withoutProto.lastIndexOf('@');
+        const hostPortDb = atIndex !== -1 ? withoutProto.substring(atIndex + 1) : withoutProto;
+        dbUrl = 'jdbc:postgresql://' + hostPortDb;
+      } else if (!dbUrl.startsWith('jdbc:')) {
+        dbUrl = 'jdbc:' + formData.dbType.toLowerCase() + '://' + dbUrl;
+      }
+
+      const res = await api.post('/api/datasource/test', {
+        url: dbUrl,
+        username: formData.username,
+        password: formData.password
+      });
+      if (res.data.success) {
+        alert(`✅ Connection successful!\nLoaded ${res.data.data?.length || 0} records.`);
+        onTest(res.data.data, formData.name, {
+          url: dbUrl,
+          username: formData.username,
+          password: formData.password
+        });
+        onClose();
+      } else {
+        alert('❌ Connection failed: ' + res.data.message);
+      }
+    } catch (e) {
+      alert('❌ Error connecting to server');
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <div className="modal-header">New Datasource</div>
+        <div className="modal-body">
+          <div className="modal-field">
+            <label>Database Type</label>
+            <select value={formData.dbType} onChange={e => setFormData({...formData, dbType: e.target.value})}>
+              <option>PostgreSQL</option>
+              <option>MS-SQL</option>
+              <option>Oracle</option>
+            </select>
+          </div>
+          <div className="modal-field">
+            <label>Datasource Name</label>
+            <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. Sales DB" />
+          </div>
+          <div className="modal-field">
+            <label>Connection String (or IP/Host)</label>
+            <input type="text" value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} placeholder="localhost:5432/mydb" />
+          </div>
+          <div className="modal-field">
+            <label>Username</label>
+            <input type="text" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} />
+          </div>
+          <div className="modal-field">
+            <label>Password</label>
+            <input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="modal-btn-cancel" onClick={onClose}>✖ Cancel</button>
+          <button className="modal-btn-test" onClick={handleTest} disabled={testing}>{testing ? 'Testing...' : 'Test Connection'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ImportDashboardModal({ onClose, onImport }) {
+  const [file, setFile] = useState(null);
+
+  const handleImport = () => {
+    if (!file) { alert("Please select a JSON file."); return; }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const json = JSON.parse(e.target.result);
+        onImport(json);
+        onClose();
+      } catch (err) { alert("Invalid JSON file."); }
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content" style={{ width: '500px' }}>
+        <div className="modal-header">Import Dashboard</div>
+        <div className="modal-body">
+          <div className="modal-field">
+            <label>Select JSON File</label>
+            <input type="file" accept=".json" onChange={e => setFile(e.target.files[0])} style={{ padding: '8px' }} />
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="modal-btn-cancel" onClick={onClose}>✖ Close</button>
+          <button className="btn-primary" onClick={handleImport} style={{ padding: '8px 16px', borderRadius: '6px' }}>📥 Import</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AppInner() {
   const [user, setUser] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem('dp_user')); } catch { return null; }
@@ -166,13 +291,7 @@ function AppInner() {
 
   const handleAddWidget = useCallback((type) => {
     const newId = Date.now().toString();
-    const newWidget = {
-      id: newId,
-      type,
-      table: '',
-      mapping: null,
-      width: 'half'
-    };
+    const newWidget = { id: newId, type, table: '', mapping: null, width: 'half' };
     setWidgets(prev => [...(prev || []), newWidget]);
   }, []);
 
@@ -247,7 +366,7 @@ function AppInner() {
       <div className="main-content">
         <header className="topbar">
           <div className="topbar-left" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button className="btn btn-ghost" onClick={() => setCollapsed(!collapsed)} style={{ padding: '8px', border: 'none', background: 'transparent' }}>
+            <button className="btn btn-ghost" onClick={() => setCollapsed(!collapsed)} style={{ padding: '8px', border: 'none', background: 'transparent' }} title="Toggle Sidebar">
               <span style={{ fontSize: 18 }}>☰</span>
             </button>
             <svg width="36" height="36" viewBox="0 0 44 44" fill="none" style={{ marginLeft: '4px', marginRight: '8px' }}>
@@ -331,7 +450,7 @@ function AppInner() {
                         rowLimit={rowLimit}
                         onLimitChange={setRowLimit}
                       />
-                    : <DashboardHome data={rawData} loading={loading} onRefresh={loadData} dashPrefs={dashPrefs} />
+                    : <DashboardHome data={rawData} dashPrefs={dashPrefs} />
                 )}
                 {activeNav === 'analytics' && <AnalyticsPage data={importedData || rawData} />}
                 {activeNav === 'tasks'     && <TasksPage     data={importedData || rawData} />}
@@ -342,58 +461,6 @@ function AppInner() {
             )}
           </GlobalErrorBoundary>
         </main>
-      </div>
-    </div>
-  );
-}
-
-function NewDatasourceModal({ onClose, onTest }) {
-  const [formData, setFormData] = useState({ dbType: 'PostgreSQL', name: '', url: '', username: '', password: '' });
-  const [testing, setTesting] = useState(false);
-  const handleTest = async () => {
-    setTesting(true);
-    try {
-      const res = await api.post('/api/datasource/test', formData);
-      if (res.data.success) {
-        onTest(res.data.data, formData.name, formData);
-        onClose();
-      } else alert('❌ ' + res.data.message);
-    } catch { alert('❌ Server error'); } finally { setTesting(false); }
-  };
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="modal-header">New Datasource</div>
-        <div className="modal-body">
-          <input className="modal-field" type="text" placeholder="Datasource Name" value={formData.name} onChange={e=>setFormData({...formData, name:e.target.value})} />
-          <input className="modal-field" type="text" placeholder="URL" value={formData.url} onChange={e=>setFormData({...formData, url:e.target.value})} />
-          <input className="modal-field" type="text" placeholder="User" value={formData.username} onChange={e=>setFormData({...formData, username:e.target.value})} />
-          <input className="modal-field" type="password" placeholder="Pass" value={formData.password} onChange={e=>setFormData({...formData, password:e.target.value})} />
-        </div>
-        <div className="modal-footer">
-          <button onClick={onClose}>Cancel</button>
-          <button onClick={handleTest} disabled={testing}>Test</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ImportDashboardModal({ onClose, onImport }) {
-  const [file, setFile] = useState(null);
-  const handleImport = () => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => { onImport(JSON.parse(e.target.result)); onClose(); };
-    reader.readAsText(file);
-  };
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="modal-header">Import Dashboard</div>
-        <input type="file" onChange={e=>setFile(e.target.files[0])} />
-        <button onClick={handleImport}>Import</button>
-        <button onClick={onClose}>Close</button>
       </div>
     </div>
   );
