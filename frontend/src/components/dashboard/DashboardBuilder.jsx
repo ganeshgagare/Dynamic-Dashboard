@@ -13,13 +13,11 @@ export function DashboardBuilder({ data, widgets, onDrop, onRemove, onConfigure,
           </div>
           <span className="custom-db-source-name">
             Source: <strong>{sourceName || 'Connected Database'}</strong>
-          </span>
-          <div className="dataset-size-badge">
-            <span className="size-label">
-              {rowLimit ? `Showing ${Math.min(rowLimit, data.length).toLocaleString()} of ` : 'Total Records: '}
+            <span style={{ marginLeft: '12px', opacity: 0.7, fontSize: '11px' }}>
+              ({rowLimit ? `Showing ${Math.min(rowLimit, data.length).toLocaleString()} of ` : 'Total: '}
+              <strong>{data.length.toLocaleString()}</strong>)
             </span>
-            <span className="size-value">{data.length.toLocaleString()}</span>
-          </div>
+          </span>
 
           <div className="limit-selector-group">
             <span className="limit-label">Rows to Process:</span>
