@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, Component } from 'react';
 import { ThemeProvider } from './theme.jsx';
 import { Sidebar } from './components/Sidebar';
 import { SummaryCard } from './components/Cards';
@@ -15,7 +15,29 @@ import { STATUSES, CATEGORIES } from './constants.js';
 import api from './api.js';
 
 import { DashboardBuilder } from './components/dashboard/DashboardBuilder.jsx';
+import { MappingModal } from './components/dashboard/MappingModal.jsx';
 import './components/dashboard/dashboard.css';
+
+// ─── Global Error Boundary ──────────────────────────────────────────────────
+class GlobalErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '40px', textAlign: 'center', background: '#0f172a', color: '#f1f5f9', minHeight: '100vh' }}>
+          <h1 style={{ color: '#ef4444', marginBottom: '20px' }}>Something went wrong.</h1>
+          <p style={{ marginBottom: '20px' }}>{this.state.error?.message || 'Unknown Error'}</p>
+          <button onClick={() => window.location.reload()} className="btn btn-primary">Reload App</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const PAGE_TITLES = {
   dashboard: { title: 'Dashboard', sub: 'Overview of all metrics' },
@@ -26,24 +48,18 @@ const PAGE_TITLES = {
   help:       { title: 'Help',       sub: 'Support and documentation' },
 };
 
-function PageHeader({ title, sub }) {
-  return (
-    <div className="page-header">
-      <h1>{title}</h1>
-      <p>{sub}</p>
-    </div>
-  );
-}
-
-function DashboardHome({ data, dashPrefs }) {
+function DashboardHome({ data, dashPrefs, loading, onRefresh }) {
   const [filters, setFilters] = useState({ status: 'All', category: 'All', search: '' });
 
-  const filtered = useMemo(() => data.filter(d => {
-    if (filters.status !== 'All' && d.status !== filters.status) return false;
-    if (filters.category !== 'All' && d.category !== filters.category) return false;
-    if (filters.search && !(d.name || '').toLowerCase().includes(filters.search.toLowerCase())) return false;
-    return true;
-  }), [data, filters]);
+  const filtered = useMemo(() => {
+    if (!data) return [];
+    return data.filter(d => {
+      if (filters.status !== 'All' && d.status !== filters.status) return false;
+      if (filters.category !== 'All' && d.category !== filters.category) return false;
+      if (filters.search && !(d.name || '').toLowerCase().includes(filters.search.toLowerCase())) return false;
+      return true;
+    });
+  }, [data, filters]);
 
   const stats = useMemo(() => ({
     total: filtered.length,
@@ -99,297 +115,6 @@ function DashboardHome({ data, dashPrefs }) {
   );
 }
 
-// ─── Chart definitions for the picker ───────────────────────────────────────
-const ALL_CHART_DEFS = [
-  { id: 'bar',     label: 'Status Bar',     icon: '📊', desc: 'Compare task statuses side by side' },
-  { id: 'line',    label: 'Activity Line',  icon: '📈', desc: 'Track task volume trends over time' },
-  { id: 'pie',     label: 'Status Pie',     icon: '🥧', desc: 'Proportional share per status' },
-  { id: 'catbar',  label: 'Category Bar',   icon: '📦', desc: 'Performance breakdown by category' },
-];
-
-// ─── Custom Dashboard ────────────────────────────────────────────────────────
-function CustomDashboard({ data, sourceName, onReset }) {
-  const [filters, setFilters]         = useState({ status: 'All', category: 'All', search: '' });
-  const [selectedCharts, setSelected] = useState(['bar', 'pie']);
-  const [pickerOpen, setPickerOpen]   = useState(false);
-  const [layout, setLayout]           = useState('grid');
-
-
-  // Dynamically derive filter options from actual imported data
-  const statuses   = useMemo(() => ['All', ...new Set(data.map(d => d.status).filter(Boolean))],   [data]);
-  const categories = useMemo(() => ['All', ...new Set(data.map(d => d.category).filter(Boolean))], [data]);
-
-  const filtered = useMemo(() => data.filter(d => {
-    if (filters.status   !== 'All' && d.status   !== filters.status)   return false;
-    if (filters.category !== 'All' && d.category !== filters.category) return false;
-    if (filters.search && !(d.name || '').toLowerCase().includes(filters.search.toLowerCase())) return false;
-    return true;
-  }), [data, filters]);
-
-  const toggleChart = (id) => setSelected(prev =>
-    prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
-  );
-
-  const chartMap = {
-    bar:    <StatusBarChart    key="bar"  data={filtered} />,
-    line:   <ActivityLineChart key="line" data={filtered} />,
-    pie:    <StatusPieChart    key="pie"  data={filtered} />,
-    catbar: <CategoryBarChart  key="cat"  data={filtered} />,
-  };
-
-  return (
-    <>
-      {/* ── Source Info Banner ── */}
-      <div className="custom-db-banner">
-        <div className="custom-db-banner-left">
-          <div className="custom-db-source-badge">
-            <span className="custom-db-source-dot" />
-            Live Data
-          </div>
-          <span className="custom-db-source-name">
-            Source: <strong>{sourceName || 'Imported Dataset'}</strong>
-          </span>
-          <span className="custom-db-record-count">{data.length} records · {filtered.length} shown</span>
-        </div>
-        <div className="custom-db-banner-right">
-          {/* Layout switcher */}
-          <div className="custom-db-layout-toggle">
-            <button className={layout === 'grid'  ? 'active' : ''} onClick={() => setLayout('grid')}  title="Grid layout">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>
-            </button>
-            <button className={layout === 'stack' ? 'active' : ''} onClick={() => setLayout('stack')} title="Full-width">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="5" rx="1"/><rect x="3" y="10" width="18" height="5" rx="1"/><rect x="3" y="17" width="18" height="5" rx="1"/></svg>
-            </button>
-          </div>
-          {/* Chart picker toggle */}
-          <button className="btn btn-ghost custom-db-picker-btn" onClick={() => setPickerOpen(p => !p)}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-            </svg>
-            Charts ({selectedCharts.length} / {ALL_CHART_DEFS.length})
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <polyline points={pickerOpen ? "18 15 12 9 6 15" : "6 9 12 15 18 9"}/>
-            </svg>
-          </button>
-          <button className="btn custom-db-reset-btn" onClick={onReset}>
-            ✕ Reset
-          </button>
-        </div>
-      </div>
-
-      {/* ── Chart Picker Panel ── */}
-      {pickerOpen && (
-        <div className="chart-picker-panel">
-          <div className="chart-picker-header">
-            <span className="chart-picker-title">Choose which charts to display</span>
-            <span className="chart-picker-hint">Click to toggle · changes reflect instantly</span>
-          </div>
-          <div className="chart-picker-grid">
-            {ALL_CHART_DEFS.map(chart => (
-              <button
-                key={chart.id}
-                className={`chart-picker-card ${selectedCharts.includes(chart.id) ? 'selected' : ''}`}
-                onClick={() => toggleChart(chart.id)}
-              >
-                <div className="chart-picker-check">
-                  {selectedCharts.includes(chart.id) && (
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                  )}
-                </div>
-                <span className="chart-picker-icon">{chart.icon}</span>
-                <div className="chart-picker-info">
-                  <div className="chart-picker-label">{chart.label}</div>
-                  <div className="chart-picker-desc">{chart.desc}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-          {selectedCharts.length === 0 && (
-            <div className="chart-picker-warning">⚠️ Pick at least one chart to see visualizations</div>
-          )}
-        </div>
-      )}
-
-      {/* ── Filters (same as default dashboard) ── */}
-      <div className="filters-bar">
-        <span className="filter-label">Filter:</span>
-        <input className="filter-input" type="text" placeholder="🔍  Search…"
-          value={filters.search} onChange={e => setFilters(f => ({ ...f, search: e.target.value }))} />
-        <select className="filter-select" value={filters.status}
-          onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}>
-          {statuses.map(s => <option key={s}>{s}</option>)}
-        </select>
-        <select className="filter-select" value={filters.category}
-          onChange={e => setFilters(f => ({ ...f, category: e.target.value }))}>
-          {categories.map(c => <option key={c}>{c}</option>)}
-        </select>
-        <div className="filter-chips">
-          {statuses.slice(1).map(s => (
-            <button key={s} className={`chip ${filters.status === s ? 'active' : ''}`}
-              onClick={() => setFilters(f => ({ ...f, status: f.status === s ? 'All' : s }))}>{s}</button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Selected Charts Only ── */}
-      {selectedCharts.length > 0 ? (
-        <div className={layout === 'grid' ? 'charts-grid' : 'charts-stack'}>
-          {selectedCharts.map(id => (
-            <div key={id} className={layout === 'stack' ? 'chart-full' : ''}>
-              {chartMap[id]}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="custom-db-empty-charts">
-          <div className="custom-db-empty-icon">📊</div>
-          <div className="custom-db-empty-text">No charts selected</div>
-          <div className="custom-db-empty-sub">Open "Charts (0/4)" above and pick which charts you want</div>
-        </div>
-      )}
-
-      {/* ── Data Table ── */}
-      <DataTable data={filtered} rowsPerPage={16} />
-    </>
-  );
-}
-
-
-function NewDatasourceModal({ onClose, onTest }) {
-  const [formData, setFormData] = useState({
-    dbType: 'PostgreSQL',
-    name: '',
-    url: '',
-    username: '',
-    password: ''
-  });
-  const [testing, setTesting] = useState(false);
-
-  const handleTest = async () => {
-    setTesting(true);
-    try {
-      let dbUrl = formData.url;
-      // If it's a standard connection URI, convert it to JDBC format
-      if (dbUrl.startsWith('postgresql://')) {
-        // Strip out the username/password part if present
-        // Format: postgresql://[user[:password]@]host[:port][/dbname]
-        const withoutProto = dbUrl.replace('postgresql://', '');
-        const atIndex = withoutProto.lastIndexOf('@');
-        const hostPortDb = atIndex !== -1 ? withoutProto.substring(atIndex + 1) : withoutProto;
-        dbUrl = 'jdbc:postgresql://' + hostPortDb;
-      } else if (!dbUrl.startsWith('jdbc:')) {
-        dbUrl = 'jdbc:' + formData.dbType.toLowerCase() + '://' + dbUrl;
-      }
-
-      const res = await api.post('/api/datasource/test', {
-        url: dbUrl,
-        username: formData.username,
-        password: formData.password
-      });
-      const data = res.data;
-      if (data.success) {
-        alert(`✅ Connection to ${formData.dbType} successful!\nLoaded ${data.data?.length || 0} records.`);
-        if (data.data && data.data.length > 0) {
-          onTest(data.data, formData.name, {
-            url: dbUrl,
-            username: formData.username,
-            password: formData.password
-          });
-        }
-        onClose();
-      } else {
-        alert('❌ Connection failed: ' + data.message);
-      }
-    } catch {
-      alert('❌ Error connecting to server');
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="modal-header">New Datasource</div>
-        <div className="modal-body">
-          <div className="modal-field">
-            <label>Database Type<span>*</span></label>
-            <select value={formData.dbType} onChange={e => setFormData({...formData, dbType: e.target.value})}>
-              <option>PostgreSQL</option>
-              <option>MS-SQL</option>
-              <option>Oracle</option>
-            </select>
-          </div>
-          <div className="modal-field">
-            <label>Datasource Name<span>*</span></label>
-            <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Datasource Name is mandatory" />
-          </div>
-          <div className="modal-field">
-            <label>Connection String<span>*</span></label>
-            <input type="text" value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} />
-          </div>
-          <div className="modal-field">
-            <label>Username<span>*</span></label>
-            <input type="text" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} />
-          </div>
-          <div className="modal-field">
-            <label>Password<span>*</span></label>
-            <input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="modal-btn-cancel" onClick={onClose}>✖ Cancel</button>
-          <button className="modal-btn-test" onClick={handleTest} disabled={testing}>{testing ? 'Testing...' : 'Test'}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ImportDashboardModal({ onClose, onImport }) {
-  const [file, setFile] = useState(null);
-
-  const handleImport = () => {
-    if (!file) {
-      alert("Please select a JSON file first.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const json = JSON.parse(e.target.result);
-        onImport(json);
-        onClose();
-      } catch {
-        alert("Invalid JSON file.");
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content" style={{ width: '500px' }}>
-        <div className="modal-header">Import Dashboard</div>
-        <div className="modal-body">
-          <div className="modal-field">
-            <label>Select JSON File :</label>
-            <input type="file" accept=".json" onChange={e => setFile(e.target.files[0])} style={{ padding: '8px' }} />
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="modal-btn-cancel" onClick={onClose}>✖ Close</button>
-          <button className="btn-primary" onClick={handleImport} style={{ padding: '8px 16px', borderRadius: '6px' }}>
-            📥 Import
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function AppInner() {
   const [user, setUser] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem('dp_user')); } catch { return null; }
@@ -409,7 +134,6 @@ function AppInner() {
       if (['dashboard','analytics','tasks','reports','settings','help'].includes(hash)) {
         setActiveNav(hash);
       } else if (!hash) {
-        // If they press back until the URL has no hash (the main page), route to dashboard
         setActiveNav('dashboard');
       }
     };
@@ -422,7 +146,7 @@ function AppInner() {
     setActiveNav(nav);
   };
 
-  const [importedData,  setImportedData]  = useState(null); // null = use default rawData
+  const [importedData,  setImportedData]  = useState(null);
   const [importSource,  setImportSource]  = useState('');
   const [rawData, setRawData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -430,20 +154,17 @@ function AppInner() {
   const [lastUpdated, setLastUpdated] = useState(null);
   
   const [collapsed, setCollapsed] = useState(false);
-  
-  // New Dashboard state
   const [showMenu, setShowMenu] = useState(false);
   const [showDSModal, setShowDSModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [showMappingModal, setShowMappingModal] = useState(null); // widgetId
+  const [showMappingModal, setShowMappingModal] = useState(null);
 
-  // Builder State
   const [widgets, setWidgets] = useState([]);
-  const [dsConfig, setDsConfig] = useState(null); // { url, username, password }
-  const [builderSourceType, setBuilderSourceType] = useState(null); // 'db' or 'json'
-  const [rowLimit, setRowLimit] = useState(100); // Default row limit for safety
+  const [dsConfig, setDsConfig] = useState(null);
+  const [builderSourceType, setBuilderSourceType] = useState(null);
+  const [rowLimit, setRowLimit] = useState(100);
 
-  const handleAddWidget = (type) => {
+  const handleAddWidget = useCallback((type) => {
     const newId = Date.now().toString();
     const newWidget = {
       id: newId,
@@ -453,14 +174,14 @@ function AppInner() {
       width: 'half'
     };
     setWidgets(prev => [...(prev || []), newWidget]);
-  };
+  }, []);
 
   const handleRemoveWidget = (id) => {
-    setWidgets(widgets.filter(w => w.id !== id));
+    setWidgets(prev => (prev || []).filter(w => w.id !== id));
   };
 
   const handleUpdateWidget = (id, config) => {
-    setWidgets(widgets.map(w => w.id === id ? { ...w, ...config } : w));
+    setWidgets(prev => (prev || []).map(w => w.id === id ? { ...w, ...config } : w));
     setShowMappingModal(null);
   };
 
@@ -469,21 +190,17 @@ function AppInner() {
     setApiError('');
     try {
       const data = await fetchDashboardData();
-      setRawData(data);
+      setRawData(data || []);
       setLastUpdated(new Date());
     } catch {
-      setApiError('Failed to load dashboard data. Please refresh or check the backend.');
+      setApiError('Failed to load dashboard data. Please refresh.');
     } finally { setLoading(false); }
   }, []);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (user) loadData(); }, [user, loadData]);
 
   const handleLogin = (u) => {
-    // u contains { token, id, name, email, role, preferences }
-    if (u.token) {
-      localStorage.setItem('dp_token', u.token);
-    }
+    if (u.token) localStorage.setItem('dp_token', u.token);
     const { token: _token, ...userWithoutToken } = u;
     sessionStorage.setItem('dp_user', JSON.stringify(userWithoutToken));
     setUser(userWithoutToken);
@@ -506,10 +223,10 @@ function AppInner() {
     if (Array.isArray(jsonData)) {
       setImportedData(jsonData);
       setImportSource(sourceName);
-      setBuilderSourceType('json'); // Trigger Builder for JSON
+      setBuilderSourceType('json');
       setLastUpdated(new Date());
     } else {
-      alert('❌ Invalid JSON format. Expected an array.');
+      alert('❌ Invalid JSON format.');
     }
   };
 
@@ -530,14 +247,12 @@ function AppInner() {
       <div className="main-content">
         <header className="topbar">
           <div className="topbar-left" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button className="btn btn-ghost" onClick={() => setCollapsed(!collapsed)} style={{ padding: '8px', border: 'none', background: 'transparent' }} title="Toggle Sidebar">
+            <button className="btn btn-ghost" onClick={() => setCollapsed(!collapsed)} style={{ padding: '8px', border: 'none', background: 'transparent' }}>
               <span style={{ fontSize: 18 }}>☰</span>
             </button>
             <svg width="36" height="36" viewBox="0 0 44 44" fill="none" style={{ marginLeft: '4px', marginRight: '8px' }}>
               <rect width="44" height="44" rx="12" fill="url(#topl)"/>
               <path d="M8 30 L15 18 L22 25 L29 13 L36 19" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <circle cx="36" cy="19" r="3.5" fill="white" opacity="0.9"/>
-              <circle cx="8" cy="30" r="2.5" fill="white" opacity="0.6"/>
               <defs><linearGradient id="topl" x1="0" y1="0" x2="44" y2="44" gradientUnits="userSpaceOnUse">
                 <stop stopColor="#6366f1"/><stop offset="1" stopColor="#a78bfa"/>
               </linearGradient></defs>
@@ -550,22 +265,14 @@ function AppInner() {
           <div className="topbar-actions" style={{ position: 'relative' }}>
             {['dashboard','analytics','tasks','reports'].includes(activeNav) && (
               <>
-                <button className="btn btn-primary" onClick={() => setShowMenu(!showMenu)}>
-                  + New Dashboard
-                </button>
+                <button className="btn btn-primary" onClick={() => setShowMenu(!showMenu)}>+ New Dashboard</button>
                 {showMenu && (
                   <div className="dropdown-menu">
-                    <button className="dropdown-item" onClick={() => { setShowMenu(false); setShowImportModal(true); }}>
-                      <span>📥</span> Import Dashboard
-                    </button>
-                    <button className="dropdown-item" onClick={() => { setShowMenu(false); setShowDSModal(true); }}>
-                      <span>🔗</span> New Datasource
-                    </button>
+                    <button className="dropdown-item" onClick={() => { setShowMenu(false); setShowImportModal(true); }}>📥 Import Dashboard</button>
+                    <button className="dropdown-item" onClick={() => { setShowMenu(false); setShowDSModal(true); }}>🔗 New Datasource</button>
                   </div>
                 )}
-                <button className="btn btn-ghost" onClick={loadData} disabled={loading}>
-                  {loading ? '⟳ …' : '⟳ Refresh'}
-                </button>
+                <button className="btn btn-ghost" onClick={loadData} disabled={loading}>{loading ? '⟳ …' : '⟳ Refresh'}</button>
               </>
             )}
           </div>
@@ -593,50 +300,100 @@ function AppInner() {
         )}
 
         {apiError && (
-          <div style={{
-            background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)',
-            color: '#fca5a5', padding: '10px 20px', fontSize: '13px',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-          }}>
+          <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: '#fca5a5', padding: '10px 20px', fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>⚠ {apiError}</span>
-            <button onClick={() => setApiError('')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '16px' }}>✕</button>
+            <button onClick={() => setApiError('')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>✕</button>
           </div>
         )}
 
         <main className="page-content">
-          {loading && ['dashboard','analytics','tasks','reports'].includes(activeNav) ? (
-            <div className="loading-overlay">
-              <div className="spinner" />
-              <p className="loading-text">Loading data…</p>
-            </div>
-          ) : (
-            <>
-              {activeNav === 'dashboard' && (
-                builderSourceType 
-                  ? <DashboardBuilder 
-                      data={(importedData || rawData || []).slice(0, rowLimit || undefined)}
-                      widgets={widgets}
-                      onDrop={handleAddWidget}
-                      onRemove={handleRemoveWidget}
-                      onConfigure={setShowMappingModal}
-                      onUpdateWidget={handleUpdateWidget}
-                      dsConfig={dsConfig}
-                      sourceType={builderSourceType}
-                      sourceName={importSource}
-                      onReset={handleResetImport}
-                      rowLimit={rowLimit}
-                      onLimitChange={setRowLimit}
-                    />
-                  : <DashboardHome data={rawData} loading={loading} onRefresh={loadData} dashPrefs={dashPrefs} />
-              )}
-              {activeNav === 'analytics' && <AnalyticsPage data={importedData || rawData} />}
-              {activeNav === 'tasks'     && <TasksPage     data={importedData || rawData} />}
-              {activeNav === 'reports'   && <ReportsPage   data={importedData || rawData} />}
-              {activeNav === 'settings'  && <SettingsPage user={user} onUpdateUser={handleUpdateUser} />}
-              {activeNav === 'help'      && <HelpPage />}
-            </>
-          )}
+          <GlobalErrorBoundary>
+            {loading && ['dashboard','analytics','tasks','reports'].includes(activeNav) ? (
+              <div className="loading-overlay">
+                <div className="spinner" />
+                <p className="loading-text">Loading data…</p>
+              </div>
+            ) : (
+              <>
+                {activeNav === 'dashboard' && (
+                  builderSourceType 
+                    ? <DashboardBuilder 
+                        data={(importedData || rawData || []).slice(0, rowLimit || undefined)}
+                        widgets={widgets}
+                        onDrop={handleAddWidget}
+                        onRemove={handleRemoveWidget}
+                        onConfigure={setShowMappingModal}
+                        onUpdateWidget={handleUpdateWidget}
+                        dsConfig={dsConfig}
+                        sourceType={builderSourceType}
+                        sourceName={importSource}
+                        onReset={handleResetImport}
+                        rowLimit={rowLimit}
+                        onLimitChange={setRowLimit}
+                      />
+                    : <DashboardHome data={rawData} loading={loading} onRefresh={loadData} dashPrefs={dashPrefs} />
+                )}
+                {activeNav === 'analytics' && <AnalyticsPage data={importedData || rawData} />}
+                {activeNav === 'tasks'     && <TasksPage     data={importedData || rawData} />}
+                {activeNav === 'reports'   && <ReportsPage   data={importedData || rawData} />}
+                {activeNav === 'settings'  && <SettingsPage user={user} onUpdateUser={handleUpdateUser} />}
+                {activeNav === 'help'      && <HelpPage />}
+              </>
+            )}
+          </GlobalErrorBoundary>
         </main>
+      </div>
+    </div>
+  );
+}
+
+function NewDatasourceModal({ onClose, onTest }) {
+  const [formData, setFormData] = useState({ dbType: 'PostgreSQL', name: '', url: '', username: '', password: '' });
+  const [testing, setTesting] = useState(false);
+  const handleTest = async () => {
+    setTesting(true);
+    try {
+      const res = await api.post('/api/datasource/test', formData);
+      if (res.data.success) {
+        onTest(res.data.data, formData.name, formData);
+        onClose();
+      } else alert('❌ ' + res.data.message);
+    } catch { alert('❌ Server error'); } finally { setTesting(false); }
+  };
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <div className="modal-header">New Datasource</div>
+        <div className="modal-body">
+          <input className="modal-field" type="text" placeholder="Datasource Name" value={formData.name} onChange={e=>setFormData({...formData, name:e.target.value})} />
+          <input className="modal-field" type="text" placeholder="URL" value={formData.url} onChange={e=>setFormData({...formData, url:e.target.value})} />
+          <input className="modal-field" type="text" placeholder="User" value={formData.username} onChange={e=>setFormData({...formData, username:e.target.value})} />
+          <input className="modal-field" type="password" placeholder="Pass" value={formData.password} onChange={e=>setFormData({...formData, password:e.target.value})} />
+        </div>
+        <div className="modal-footer">
+          <button onClick={onClose}>Cancel</button>
+          <button onClick={handleTest} disabled={testing}>Test</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ImportDashboardModal({ onClose, onImport }) {
+  const [file, setFile] = useState(null);
+  const handleImport = () => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => { onImport(JSON.parse(e.target.result)); onClose(); };
+    reader.readAsText(file);
+  };
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <div className="modal-header">Import Dashboard</div>
+        <input type="file" onChange={e=>setFile(e.target.files[0])} />
+        <button onClick={handleImport}>Import</button>
+        <button onClick={onClose}>Close</button>
       </div>
     </div>
   );
