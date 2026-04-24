@@ -5,6 +5,9 @@ import {
 } from 'recharts';
 import { format } from 'date-fns';
 
+const COLORS = { Completed: '#10b981', Pending: '#f59e0b', 'In Progress': '#3b82f6' };
+const CAT_COLORS = ['#6366f1','#a78bfa','#ec4899','#f59e0b','#10b981','#3b82f6'];
+
 export class ChartErrorBoundary extends Component {
   constructor(props) {
     super(props);

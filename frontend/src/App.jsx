@@ -15,9 +15,6 @@ import { STATUSES, CATEGORIES } from './constants.js';
 import API_BASE from './config.js';
 import api from './api.js';
 
-import { WidgetToolbox } from './components/dashboard/WidgetToolbox.jsx';
-import { DashboardCanvas } from './components/dashboard/DashboardCanvas.jsx';
-import { MappingModal } from './components/dashboard/MappingModal.jsx';
 import { DashboardBuilder } from './components/dashboard/DashboardBuilder.jsx';
 import './components/dashboard/dashboard.css';
 

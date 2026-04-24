@@ -1,7 +1,5 @@
 import React from 'react';
-import { WidgetToolbox } from './WidgetToolbox.jsx';
 import { DashboardCanvas } from './DashboardCanvas.jsx';
-import { SummaryCard } from '../Cards';
 
 export function DashboardBuilder({ data, widgets, onDrop, onRemove, onConfigure, onUpdateWidget, dsConfig, sourceType, sourceName, onReset, rowLimit, onLimitChange }) {
   return (
