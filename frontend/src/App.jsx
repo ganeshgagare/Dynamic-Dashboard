@@ -278,7 +278,7 @@ function AppInner() {
   const [apiError, setApiError] = useState('');
   const [lastUpdated, setLastUpdated] = useState(null);
   
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
   const [showDSModal, setShowDSModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
