@@ -162,6 +162,7 @@
   --bg-secondary: #0d1220;
   --bg-card: #111827;
   --bg-card-hover: #161f30;
+  --bg-overlay: rgba(8, 12, 20, 0.7);
   --border: rgba(255,255,255,0.06);
   --border-hover: rgba(99,102,241,0.4);
   --text-primary: #f1f5f9;
@@ -174,11 +175,13 @@
   --completed: #10b981; --completed-bg: rgba(16,185,129,0.1);
   --pending: #f59e0b;   --pending-bg: rgba(245,158,11,0.1);
   --inprogress: #3b82f6; --inprogress-bg: rgba(59,130,246,0.1);
+  --danger: #ef4444; --bg-danger-soft: rgba(239, 68, 68, 0.1);
   --sidebar-width: 240px;
   --header-height: 64px;
   --radius: 14px; --radius-sm: 8px;
   --shadow: 0 8px 32px rgba(0,0,0,0.5);
   --shadow-sm: 0 2px 12px rgba(0,0,0,0.3);
+  --shadow-lg: 0 20px 40px -12px rgba(0, 0, 0, 0.5);
   --transition: 0.2s ease;
   --glow-accent: 0 0 24px rgba(99,102,241,0.25);
 }
@@ -189,6 +192,7 @@
   --bg-secondary: #ffffff;
   --bg-card: #ffffff;
   --bg-card-hover: #f8f9ff;
+  --bg-overlay: rgba(255, 255, 255, 0.7);
   --border: rgba(0,0,0,0.07);
   --border-hover: rgba(99,102,241,0.35);
   --text-primary: #0f172a;
@@ -201,8 +205,10 @@
   --completed: #059669; --completed-bg: rgba(5,150,105,0.1);
   --pending: #d97706;   --pending-bg: rgba(217,119,6,0.1);
   --inprogress: #2563eb; --inprogress-bg: rgba(37,99,235,0.1);
+  --danger: #dc2626; --bg-danger-soft: rgba(220, 38, 38, 0.1);
   --shadow: 0 4px 24px rgba(0,0,0,0.08);
   --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   --glow-accent: 0 0 24px rgba(99,102,241,0.12);
 }
 

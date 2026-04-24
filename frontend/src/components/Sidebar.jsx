@@ -86,9 +86,7 @@ export function Sidebar({ active, onNav, user, onLogout }) {
           <div className="vibe-picker-grid">
             {[
               { id: 'light', icon: '☀️', label: 'Light' },
-              { id: 'dark', icon: '🌙', label: 'Dark' },
-              { id: 'cyberpunk', icon: '⚡', label: 'Cyber' },
-              { id: 'ivory', icon: '📜', label: 'Ivory' }
+              { id: 'dark', icon: '🌙', label: 'Dark' }
             ].map(v => (
               <button 
                 key={v.id}

@@ -4,14 +4,14 @@
   flex-direction: column;
   gap: 24px;
   padding: 24px;
-  background: #f8fafc; /* Light, clean background */
+  background: var(--bg-primary); 
   min-height: 100vh;
 }
 
 /* ── Banner/Header Area ── */
 .custom-db-banner {
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px 20px;
   display: flex;
@@ -343,7 +343,7 @@
 .widget-title {
   font-size: 13px;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-primary);
 }
 
 .widget-actions {
@@ -395,8 +395,8 @@
 
 .btn-setup {
   margin-top: 20px;
-  background: #6366f1;
-  color: white !important;
+  background: var(--accent);
+  color: var(--bg-primary) !important;
   border: none;
   padding: 10px 24px;
   border-radius: 8px;
@@ -412,13 +412,13 @@
 }
 
 .btn-setup:hover {
-  background: #4f46e5;
+  background: var(--accent-hover);
   transform: translateY(-1px);
 }
 
 /* ── Ultra-Premium Mapping Modal ── */
 .modal-overlay {
-  background: rgba(15, 23, 42, 0.4) !important;
+  background: var(--bg-overlay) !important;
   backdrop-filter: blur(8px) !important;
   display: flex;
   align-items: center;
@@ -437,9 +437,7 @@
   backdrop-filter: blur(20px) !important;
   border-radius: 20px !important;
   padding: 20px !important;
-  box-shadow: 
-    0 4px 6px -1px rgba(0, 0, 0, 0.2),
-    0 20px 40px -12px rgba(0, 0, 0, 0.3) !important;
+  box-shadow: var(--shadow-lg) !important;
   max-width: 400px !important;
   border: 1px solid var(--border) !important;
   width: 95%;
@@ -535,7 +533,7 @@ select {
 .modal-footer {
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid rgba(0,0,0,0.05);
+  border-top: 1px solid var(--border);
 }
 
 .btn-save {
@@ -560,10 +558,10 @@ select {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  background: rgba(0,0,0,0.04) !important;
+  background: var(--bg-secondary) !important;
   border-radius: 50% !important;
   border: none !important;
-  color: #64748b !important;
+  color: var(--text-muted) !important;
   cursor: pointer !important;
   font-size: 14px !important;
   transition: all 0.2s !important;
@@ -571,8 +569,8 @@ select {
 }
 
 .close-btn:hover {
-  background: rgba(239, 68, 68, 0.1) !important;
-  color: #ef4444 !important;
+  background: var(--bg-danger-soft) !important;
+  color: var(--danger) !important;
   transform: rotate(90deg) !important;
 }
 
