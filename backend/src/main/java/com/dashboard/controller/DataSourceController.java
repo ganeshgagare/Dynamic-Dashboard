@@ -87,6 +87,55 @@ public class DataSourceController {
         }
     }
 
+    /** Inspect a database schema. Returns tables and their columns. */
+    @PostMapping("/inspect")
+    @PreAuthorize("hasRole('Admin')")
+    public ResponseEntity<?> inspectConnection(@RequestBody Map<String, String> payload) {
+        String url      = payload.get("url");
+        String username = payload.get("username");
+        String password = payload.get("password");
+
+        if (url == null || username == null || password == null) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", "Missing credentials"));
+        }
+
+        String host = extractHost(url);
+        if (host == null || !allowedHosts.contains(host)) {
+            return ResponseEntity.status(403)
+                    .body(Map.of("success", false, "message", "Host not permitted."));
+        }
+
+        try (Connection conn = DriverManager.getConnection(url, username, password)) {
+            java.sql.DatabaseMetaData metaData = conn.getMetaData();
+            
+            // Map to store Table Name -> List of Columns
+            Map<String, List<String>> schema = new java.util.TreeMap<>();
+
+            // 1. Get all user tables
+            try (java.sql.ResultSet tables = metaData.getTables(null, "public", "%", new String[]{"TABLE"})) {
+                while (tables.next()) {
+                    String tableName = tables.getString("TABLE_NAME");
+                    List<String> columnsList = new java.util.ArrayList<>();
+                    
+                    // 2. For each table, get all columns
+                    try (java.sql.ResultSet columns = metaData.getColumns(null, null, tableName, "%")) {
+                        while (columns.next()) {
+                            columnsList.add(columns.getString("COLUMN_NAME"));
+                        }
+                    }
+                    schema.put(tableName, columnsList);
+                }
+            }
+
+            return ResponseEntity.ok(Map.of("success", true, "schema", schema));
+
+        } catch (SQLException e) {
+            return ResponseEntity.status(400)
+                    .body(Map.of("success", false, "message", "Inspection failed: " + e.getMessage()));
+        }
+    }
+
     /** Extract the hostname from a JDBC URL (jdbc:postgresql://host:port/db). */
     private String extractHost(String jdbcUrl) {
         try {
