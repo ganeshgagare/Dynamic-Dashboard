@@ -159,7 +159,7 @@ function NewDatasourceModal({ onClose, onTest }) {
       } else {
         alert('❌ Connection failed: ' + res.data.message);
       }
-    } catch (_e) {
+    } catch {
       alert('❌ Error connecting to server');
     } finally {
       setTesting(false);
@@ -216,7 +216,7 @@ function ImportDashboardModal({ onClose, onImport }) {
         const json = JSON.parse(e.target.result);
         onImport(json);
         onClose();
-      } catch (_err) { alert("Invalid JSON file."); }
+      } catch { alert("Invalid JSON file."); }
     };
     reader.readAsText(file);
   };
